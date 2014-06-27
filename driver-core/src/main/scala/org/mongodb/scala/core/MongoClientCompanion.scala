@@ -24,7 +24,6 @@
  */
 package org.mongodb.scala.core
 
-import scala.Some
 import scala.collection.JavaConverters._
 
 import org.mongodb.MongoCredential
