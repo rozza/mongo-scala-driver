@@ -134,4 +134,9 @@ class DocumentImplicitSpec extends UnitTestSpec {
     doc2 should equal(Document("nested" -> nestedDoc.values))
   }
 
+  it should "throw a runtime error if it cant convert the type" in {
+    val doc = Document()
+    an[IllegalArgumentException] should be thrownBy doc + (("key", new Object))
+  }
+
 }

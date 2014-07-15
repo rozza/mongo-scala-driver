@@ -94,6 +94,8 @@ object Implicits {
       case x @ (v: ObjectId)  => new BsonObjectId(v)
       case x @ (v: Symbol)    => new BsonSymbol(v.toString())
       case None               => new BsonNull
+      case _                  =>
+        throw new IllegalArgumentException(s"Invalid type cannot be converted to a BsonValue: $v")
     }
   }
 
