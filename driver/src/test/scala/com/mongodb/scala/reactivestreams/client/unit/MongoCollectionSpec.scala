@@ -4,7 +4,7 @@ import com.mongodb.client.model._
 import com.mongodb.reactivestreams.client.{ MongoCollection => JMongoCollection }
 import com.mongodb.{ MongoNamespace, ReadPreference, WriteConcern }
 import org.bson.codecs.BsonValueCodecProvider
-import org.bson.codecs.configuration.CodecRegistryHelper.fromProvider
+import org.bson.codecs.configuration.CodecRegistries.fromProviders
 import org.bson.conversions.Bson
 import org.bson.{ BsonDocument }
 import org.scalamock.scalatest.MockFactory
@@ -60,7 +60,7 @@ class MongoCollectionSpec extends FlatSpec with Matchers with MockFactory {
   }
 
   it should "return the underlying withCodecRegistry" in {
-    val codecRegistry = fromProvider(new BsonValueCodecProvider())
+    val codecRegistry = fromProviders(new BsonValueCodecProvider())
 
     (wrapped.withCodecRegistry _).expects(codecRegistry).once()
 
