@@ -5,7 +5,6 @@ This is an experimental reactive driver for Scala and MongoDB.
 
 [![Build Status](https://travis-ci.org/mongodb/mongo-scala-driver.png?branch=master)](https://travis-ci.org/mongodb/mongo-scala-driver)
 
-
                 Here be dragons
 
     Currently, under heavy development, depends on the 3.0.x MongoDB
