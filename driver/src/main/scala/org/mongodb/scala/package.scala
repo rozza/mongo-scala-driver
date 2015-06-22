@@ -25,7 +25,7 @@ import org.mongodb.scala.collection.immutable
  *
  * @since 1.0
  */
-package object scala {
+package object scala extends ObservableImplicits {
 
   /**
    * An immutable Document implementation.
@@ -98,6 +98,7 @@ package object scala {
    * @see Observables
    */
   type Observable[TResult] = com.mongodb.async.client.Observable[TResult]
+
   /**
    * A `Subscription` represents a one-to-one lifecycle of a [[Observer]]subscribing to an [[Observable]].
    *
@@ -123,6 +124,7 @@ package object scala {
    * @tparam TResult The type of element signaled.
    */
   type Observer[TResult] = com.mongodb.async.client.Observer[TResult]
+
   /**
    * Various settings to control the behavior of a `MongoClient`.
    */
