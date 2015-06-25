@@ -30,12 +30,10 @@ private[scala] case class ZipObservable[T, U](
   private val thisQueue: ConcurrentLinkedQueue[(Long, T)] = new ConcurrentLinkedQueue[(Long, T)]()
   private val thatQueue: ConcurrentLinkedQueue[(Long, U)] = new ConcurrentLinkedQueue[(Long, U)]()
 
-  private object Locker
-
-  /* protected by Locker */
+  @volatile
   private var observable1Subscription: Option[Subscription] = None
+  @volatile
   private var observable2Subscription: Option[Subscription] = None
-  /* protected by Locker */
 
   def subscribe(observer: Observer[_ >: (T, U)]): Unit = {
     observable1.subscribe(createSubObserver[T](thisQueue, observer, firstSub = true))
@@ -48,15 +46,14 @@ private[scala] case class ZipObservable[T, U](
       override def onError(throwable: Throwable): Unit = observer.onError(throwable)
 
       override def onSubscribe(subscription: Subscription): Unit = {
-        var requestDemand = false
-        insideLock {
-          firstSub match {
-            case true  => observable1Subscription = Some(subscription)
-            case false => observable2Subscription = Some(subscription)
-          }
-          requestDemand = observable1Subscription.nonEmpty && observable2Subscription.nonEmpty
+        firstSub match {
+          case true  => observable1Subscription = Some(subscription)
+          case false => observable2Subscription = Some(subscription)
         }
-        if (requestDemand) observer.onSubscribe(jointSubscription)
+
+        if (observable1Subscription.nonEmpty && observable2Subscription.nonEmpty) {
+          observer.onSubscribe(jointSubscription)
+        }
       }
 
       override def onComplete(): Unit = observer.onComplete()
@@ -86,11 +83,10 @@ private[scala] case class ZipObservable[T, U](
     }
 
     override def unsubscribe(): Unit = {
-      insideLock { subscribed = false }
+      subscribed = false
       observable1Subscription.get.unsubscribe()
       observable2Subscription.get.unsubscribe()
     }
   }
 
-  private def insideLock(f: => Unit): Unit = Locker.synchronized { f }
 }

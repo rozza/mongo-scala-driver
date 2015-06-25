@@ -25,15 +25,16 @@ private[scala] case class FlatMapObservable[T, S](observable: Observable[T], f: 
     observable.subscribe(
       new Observer[T] {
 
+        @volatile
         private var outerSubscription: Option[Subscription] = None
-        private object Locker
-
-        /* protected by Locker */
+        @volatile
         private var nestedSubscription: Option[Subscription] = None
+        @volatile
         private var started = false
+        @volatile
         private var demand: Long = 0
+        @volatile
         private var onCompleteCalled: Boolean = false
-        /* protected by Locker */
 
         override def onSubscribe(subscription: Subscription): Unit = {
 
@@ -45,16 +46,9 @@ private[scala] case class FlatMapObservable[T, S](observable: Observable[T], f: 
                 throw new IllegalArgumentException(s"Number requested cannot be negative: $n")
               }
 
-              var localDemand: Long = 0
-              var requestFirst = false
-
-              insideLock({
-                localDemand = addDemand(n)
-                if (!started) {
-                  started = true
-                  requestFirst = true
-                }
-              })
+              val requestFirst = !started
+              val localDemand = addDemand(n)
+              if (!started) started = true
 
               requestFirst match {
                 case true => subscription.request(1)
@@ -73,14 +67,8 @@ private[scala] case class FlatMapObservable[T, S](observable: Observable[T], f: 
         }
 
         override def onComplete(): Unit = {
-          var complete: Boolean = false
-          insideLock({
-            onCompleteCalled = true
-            complete = nestedSubscription.isEmpty
-          })
-          if (complete) {
-            observer.onComplete()
-          }
+          onCompleteCalled = true
+          if (nestedSubscription.isEmpty) observer.onComplete()
         }
 
         override def onError(throwable: Throwable): Unit = observer.onError(throwable)
@@ -89,46 +77,33 @@ private[scala] case class FlatMapObservable[T, S](observable: Observable[T], f: 
           f(tResult).subscribe(
             new Observer[S]() {
               override def onError(throwable: Throwable): Unit = {
-                insideLock { nestedSubscription = None }
+                nestedSubscription = None
                 observer.onError(throwable)
               }
 
               override def onSubscribe(subscription: Subscription): Unit = {
-                var localDemand: Long = 0
-                insideLock({
-                  localDemand = demand
-                  nestedSubscription = Some(subscription)
-                })
-                subscription.request(localDemand)
+                nestedSubscription = Some(subscription)
+                subscription.request(demand)
               }
 
               override def onComplete(): Unit = {
-                var completed = false
-                var requestMore = false
-                insideLock({
-                  nestedSubscription = None
-                  onCompleteCalled match {
-                    case true => completed = true
-                    case false if demand > 0 =>
-                      addDemand(-1) // reduce demand by 1 as it will be re added by the outerSubscription
-                      requestMore = true
-                    case false => // No more demand
-                  }
-                })
-
-                if (completed) observer.onComplete()
-                else if (requestMore) outerSubscription.get.request(1)
+                nestedSubscription = None
+                onCompleteCalled match {
+                  case true => observer.onComplete()
+                  case false if demand > 0 =>
+                    addDemand(-1) // reduce demand by 1 as it will be incremented by the outerSubscription
+                    outerSubscription.get.request(1)
+                  case false => // No more demand
+                }
               }
 
               override def onNext(tResult: S): Unit = {
-                insideLock { addDemand(-1) }
+                addDemand(-1)
                 observer.onNext(tResult)
               }
             }
           )
         }
-
-        private def insideLock(f: => Unit): Unit = Locker.synchronized { f }
 
         /**
          * Adds extra demand and protects against Longs rolling over

@@ -16,6 +16,7 @@
 
 package org.mongodb.scala
 
+import scala.collection.mutable.ListBuffer
 import scala.util.Try
 
 import org.mongodb.scala.internal._
@@ -23,7 +24,7 @@ import org.mongodb.scala.internal._
 /**
  * Extends the Java [[Observable]] and adds helpers to make Observables composable and simple to Subscribe to.
  *
- * Automatcially imported into the `org.mongodb.scala` namespace
+ * Automatically imported into the `org.mongodb.scala` namespace
  */
 trait ObservableImplicits {
 
@@ -56,15 +57,15 @@ trait ObservableImplicits {
     /**
      * Subscribes to the [[Observable]] and requests `Long.MaxValue`.
      *
-     * @param doOnNext optional partial function to apply to each emitted element.
+     * @param doOnNext anonymous function to apply to each emitted element.
      */
     def subscribe(doOnNext: T => Any): Unit = subscribe(doOnNext, t => t)
 
     /**
      * Subscribes to the [[Observable]] and requests `Long.MaxValue`.
      *
-     * @param doOnNext optional partial function to apply to each emitted element.
-     * @param doOnError optional partial function to apply if there is an error.
+     * @param doOnNext anonymous function to apply to each emitted element.
+     * @param doOnError anonymous function to apply if there is an error.
      */
     def subscribe(doOnNext: T => Any, doOnError: Throwable => Any): Unit = subscribe(doOnNext, doOnError, () => ())
 
@@ -73,9 +74,9 @@ trait ObservableImplicits {
      *
      * Uses the default or overridden `onNext`, `onError`, `onComplete` partial functions.
      *
-     * @param doOnNext optional partial function to apply to each emitted element.
-     * @param doOnError optional partial function to apply if there is an error.
-     * @param doOnComplete optional partial function to apply on completion.
+     * @param doOnNext anonymous function to apply to each emitted element.
+     * @param doOnError anonymous function to apply if there is an error.
+     * @param doOnComplete anonymous function to apply on completion.
      */
     def subscribe(doOnNext: T => Any, doOnError: Throwable => Any, doOnComplete: () => Any): Unit = {
       observable.subscribe(new Observer[T] {
@@ -97,32 +98,34 @@ trait ObservableImplicits {
      *
      * Automatically requests all results
      *
-     * @param f the anonymous function applied to each emitted item
+     * @param doOnEach the anonymous function applied to each emitted item
      * @tparam U the resulting type after the transformation
      */
-    def foreach[U](f: T => U): Unit = subscribe(f)
+    def foreach[U](doOnEach: T => U): Unit = subscribe(doOnEach)
 
     /**
-     * Creates a new Observable by applying the `s` function to each emitted result.
-     * If there is an error and `onError` is called the `f` function is applied to the failed result.
+     * Creates a new Observable by applying the `resultFunction` function to each emitted result.
+     * If there is an error and `onError` is called the `errorFunction` function is applied to the failed result.
      *
-     * If there is any non-fatal exception thrown when 's' or 'f' is applied, that exception will be propagated to the resulting Observable.
-     *
-     * @param  s  function that transforms a successful result of the receiver into a
-     *            successful result of the returned observer
-     * @param  f  function that transforms a failure of the receiver into a failure of
-     *            the returned observer
+     * @param  mapFunction function that transforms a each result of the receiver and passes the result to the returned Observable
+     * @param  errorMapFunction  function that transforms a failure of the receiver into a failure of the returned observer
+     * @tparam S the resulting type of each item in the Observable
      * @return    an Observable with transformed results and / or error.
      */
-    def transform[S](s: T => S, f: Throwable => Throwable): Observable[S] = MapObservable(observable, s, f)
+    def transform[S](mapFunction: T => S, errorMapFunction: Throwable => Throwable): Observable[S] =
+      MapObservable(observable, mapFunction, errorMapFunction)
 
     /**
      * Creates a new Observable by applying a function to each emitted result of the [[Observable]].
      * If the Observable calls errors then then the new Observable will also contain this exception.
      *
      * $forComprehensionExamples
+     *
+     * @param  mapFunction function that transforms a each result of the receiver and passes the result to the returned Observable
+     * @tparam S the resulting type of each item in the Observable
+     * @return    an Observable with transformed results and / or error.
      */
-    def map[S](f: T => S): Observable[S] = MapObservable(observable, f)
+    def map[S](mapFunction: T => S): Observable[S] = MapObservable(observable, mapFunction)
 
     /**
      * Creates a new Observable by applying a function to each emitted result of the [[Observable]].
@@ -133,8 +136,13 @@ trait ObservableImplicits {
      * requesting more data.
      *
      * $forComprehensionExamples
+     *
+     * @param  mapFunction function that transforms a each result of the receiver into an Observable and passes each result of that
+     *                     Observable to the returned Observable.
+     * @tparam S the resulting type of each item in the Observable
+     * @return    an Observable with transformed results and / or error.
      */
-    def flatMap[S](f: T => Observable[S]): Observable[S] = FlatMapObservable(observable, f)
+    def flatMap[S](mapFunction: T => Observable[S]): Observable[S] = FlatMapObservable(observable, mapFunction)
 
     /**
      * Creates a new [[Observable]] by filtering the value of the current Observable with a predicate.
@@ -145,13 +153,32 @@ trait ObservableImplicits {
      * {{{
      *  val oddValues = Observable(1 to 100) filter { _ % 2 == 1 }
      * }}}
+     *
+     * @param predicate the function that is applied to each result emitted if it matches that result is passes to the returned Observable
+     * @return an Observable only containing items matching that match the predicate
      */
-    def filter(p: T => Boolean): Observable[T] = FilterObservable(observable, p)
+    def filter(predicate: T => Boolean): Observable[T] = FilterObservable(observable, predicate)
 
     /**
      * Used by for-comprehensions.
      */
     final def withFilter(p: T => Boolean): Observable[T] = FilterObservable(observable, p)
+
+    /**
+     * Collects all the values of the [[Observable]] into a list and returns a new Observable with that list.
+     *
+     * Example:
+     * {{{
+     *  val listOfNumbers = Observable(1 to 100).collect()
+     * }}}
+     *
+     * @note If the Observable is large then this will consume lots of memory!
+     *       If the underlying Observable is infinite this Observable will never complete.
+     * @see Uses [[foldLeft]] underneath
+     * @return an Observable that emits a single item, the result of accumulator.
+     */
+    def collect[S](): Observable[List[T]] =
+      FoldLeftObservable(observable, ListBuffer[T](), (l: ListBuffer[T], v: T) => l += v).map(_.toList)
 
     /**
      * Creates a new [[Observable]] that contains the single result of the applied accumulator function.
@@ -165,7 +192,7 @@ trait ObservableImplicits {
      * }}}
      *
      * @note If this function is used to collect results into a collection then it could use lots of memory!
-     *       If the underlying Observable is infinite the resulting Observable will never complete.
+     *       If the underlying Observable is infinite this Observable will never complete.
      * @param initialValue the initial (seed) accumulator value
      * @param accumulator an accumulator function to be invoked on each item emitted by the source Observable, the result of which will be
      *                    used in the next accumulator call.
@@ -183,6 +210,10 @@ trait ObservableImplicits {
      *  mongoExceptionObservable recover { case e: MongoException => 0 } // final result: 0
      *  mongoExceptionObservable recover { case e: NotFoundException => 0 } // result: exception
      * }}}
+     *
+     * @param pf the partial function used to pattern match against the `onError` throwable
+     * @tparam U the type of the returned Observable
+     * @return an Observable that will handle any matching throwable and not error.
      */
     def recover[U >: T](pf: PartialFunction[Throwable, U]): Observable[U] = RecoverObservable(observable, pf)
 
@@ -199,9 +230,18 @@ trait ObservableImplicits {
      *  mongoExceptionObservable recoverWith { case t: Throwable => observableB } // result: observableB
      * }}}
      *
-     * @param pf a partial function to matching against
-     * @tparam U the type of the resulting Observable if `this` Observable fails and the partial function matches
-     * @return the Observable that can potentially recover from an error in `this` Observable.
+     * == Ensuring results from a Single Observer ==
+     *
+     * `recoverWith` can potentially emit results from either Observer. This often isn't desirable, so to ensure only a single Observable
+     * issues results combine with the [[collect()]] method eg:
+     *
+     * {{{
+     *  val results = Observable(1 to 100).collect() { case t: Throwable => observable(200 to 300).collect() }
+     * }}}
+     *
+     * @param pf the partial function used to pattern match against the `onError` throwable
+     * @tparam U the type of the returned Observable
+     * @return an Observable that will handle any matching throwable and not error but recover with a new observable
      */
     def recoverWith[U >: T](pf: PartialFunction[Throwable, Observable[U]]): Observable[U] = RecoverWithObservable(observable, pf)
 
@@ -220,19 +260,33 @@ trait ObservableImplicits {
     def zip[U](that: Observable[U]): Observable[(T, U)] = ZipObservable(observable, that)
 
     /**
-     * Creates a new [[Observable]] which holds the result of this Observable if it was completed successfully, or, if not,
-     * the result of the `that` Observable if `that` is completed successfully.
+     * Creates a new [[Observable]] which returns the results of this Observable, if there is an error, it will then fallback to returning
+     * the results of the alternative "`that`" Observable.
+     *
      * If both Observables fail, the resulting Observable holds the throwable object of the first Observable.
      *
      * Example:
      * {{{
      *  val fallBackObservable = Observable(1 to 100) fallbackTo Observable(200 to 300)
      * }}}
+     *
+     * == Ensuring results from a Single Observer ==
+     *
+     * `fallbackTo` can potentially emit results from either Observer. This often isn't desirable, so to ensure only a single Observable
+     * issues results combine with the [[collect()]] method eg:
+     *
+     * {{{
+     *  val results = Observable(1 to 100).collect() fallbackTo observable(200 to 300).collect()
+     * }}}
+     *
+     * @param that the Observable to fallback to if `this` Observable fails
+     * @tparam U the type of the returned Observable
+     * @return an Observable that will fallback to the `that` Observable should `this` Observable complete with an `onError`.
      */
     def fallbackTo[U >: T](that: Observable[U]): Observable[U] = RecoverWithObservable(observable, { case t: Throwable => that }, true)
 
     /**
-     * Applies the side-effecting function to the final result of this [[Observable]], and returns a new Observable with the result of
+     * Applies the side-effecting function to the final result of this [[Observable]] and, returns a new Observable with the result of
      * this Observable.
      *
      * This method allows one to enforce that the callbacks are executed in a specified order.
@@ -250,6 +304,10 @@ trait ObservableImplicits {
      *   case Failure(t) => println("Failure")
      *  }
      * }}}
+     *
+     * @param pf the partial function to pattern match against
+     * @tparam U the result type of the
+     * @return an
      */
     def andThen[U](pf: PartialFunction[Try[T], U]): Observable[T] = AndThenObservable(observable, pf)
   }

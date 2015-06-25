@@ -20,11 +20,8 @@ import org.mongodb.scala.{ Observable, Observer, Subscription }
 
 private[scala] case class FoldLeftObservable[T, S](observable: Observable[T], initialValue: S, accumulator: (S, T) => S) extends Observable[S] {
 
-  private object Locker
-
-  /* protected by Locker */
-  var currentValue: S = initialValue
-  /* protected by Locker */
+  @volatile
+  private var currentValue: S = initialValue
 
   override def subscribe(observer: Observer[_ >: S]): Unit = {
     observable.subscribe(
@@ -40,10 +37,7 @@ private[scala] case class FoldLeftObservable[T, S](observable: Observable[T], in
         }
 
         override def onNext(tResult: T): Unit = {
-          val newValue = accumulator(currentValue, tResult)
-          Locker.synchronized {
-            currentValue = newValue
-          }
+          currentValue = accumulator(currentValue, tResult)
         }
       }
     )

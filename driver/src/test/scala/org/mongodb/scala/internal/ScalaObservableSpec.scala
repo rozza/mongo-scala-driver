@@ -116,6 +116,24 @@ class ScalaObservableSpec extends FlatSpec with Matchers {
     completed should equal(true)
   }
 
+  it should "have a collect method" in {
+    def myObservable(fail: Boolean = false): Observable[List[Int]] = {
+      observable[Int](fail = fail).collect()
+    }
+
+    var count = 0
+    myObservable().subscribe((i: List[Int]) => count = i.length)
+    count should equal(100)
+
+    var errorSeen: Option[Throwable] = None
+    myObservable(true).subscribe((s: List[Int]) => (), (fail: Throwable) => errorSeen = Some(fail))
+    errorSeen.getOrElse(None) shouldBe a[Throwable]
+
+    var completed = false
+    myObservable().subscribe((s: List[Int]) => (), (t: Throwable) => t, () => completed = true)
+    completed should equal(true)
+  }
+
   it should "have a foldLeft method" in {
     def myObservable(fail: Boolean = false): Observable[Int] = {
       observable[Int](fail = fail).foldLeft(0)((l: Int, i) => l + 1)

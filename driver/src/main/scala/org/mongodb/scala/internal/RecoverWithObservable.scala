@@ -30,14 +30,15 @@ private[scala] case class RecoverWithObservable[T, U >: T](
   override def subscribe(observer: Observer[_ >: U]): Unit = {
     observable.subscribe(
       new Observer[U] {
-        private object Locker
 
-        /* protected by Locker */
+        @volatile
         private var recoverySubscription: Option[Subscription] = None
+        @volatile
         private var originalException: Option[Throwable] = None
+        @volatile
         private var inRecovery: Boolean = false
+        @volatile
         private var demand: Long = 0
-        /* protected by Locker */
 
         override def onSubscribe(subscription: Subscription): Unit = {
           val initialSub = new Subscription() {
@@ -48,14 +49,8 @@ private[scala] case class RecoverWithObservable[T, U >: T](
                 throw new IllegalArgumentException(s"Number requested cannot be negative: $n")
               }
 
-              var localDemand: Long = 0
-              var localInRecovery = false
-              insideLock({
-                localDemand = addDemand(n)
-                localInRecovery = inRecovery
-              })
-
-              localInRecovery match {
+              val localDemand: Long = addDemand(n)
+              inRecovery match {
                 case true  => recoverySubscription.get.request(localDemand)
                 case false => subscription.request(localDemand)
               }
@@ -69,8 +64,8 @@ private[scala] case class RecoverWithObservable[T, U >: T](
         override def onError(throwable: Throwable): Unit = {
           originalException = Some(throwable)
           Try(pf(throwable)) recover pf match {
-            case Success(recoverObservable) => {
-              insideLock { inRecovery = true }
+            case Success(recoverObservable) =>
+              inRecovery = true
               recoverObservable.subscribe(
                 new Observer[U] {
                   override def onError(throwable: Throwable): Unit = {
@@ -81,37 +76,31 @@ private[scala] case class RecoverWithObservable[T, U >: T](
                   }
 
                   override def onSubscribe(subscription: Subscription): Unit = {
-                    var localDemand: Long = 0
-                    insideLock({
-                      localDemand = demand
-                      recoverySubscription = Some(subscription)
-                    })
-                    if (localDemand > 0) subscription.request(localDemand)
+                    recoverySubscription = Some(subscription)
+                    if (demand > 0) subscription.request(demand)
                   }
 
-                  override def onComplete(): Unit = {
-                    observer.onComplete()
-                  }
+                  override def onComplete(): Unit = observer.onComplete()
 
-                  override def onNext(tResult: U): Unit = {
-                    insideLock { demand -= 1 }
-                    observer.onNext(tResult)
-                  }
+                  override def onNext(tResult: U): Unit = processNext(tResult)
                 }
               )
-            }
             case Failure(ex) => observer.onError(throwable)
           }
         }
 
         override def onComplete(): Unit = observer.onComplete()
 
-        override def onNext(tResult: U): Unit = {
-          insideLock { demand -= 1 }
+        override def onNext(tResult: U): Unit = processNext(tResult)
+
+        /**
+         * Decrement the demand counter and pass the value to the users observer
+         * @param tResult the result to pass to the users observer
+         */
+        private def processNext(tResult: U): Unit = {
+          demand -= 1
           observer.onNext(tResult)
         }
-
-        private def insideLock(f: => Unit): Unit = Locker.synchronized { f }
 
         /**
          * Adds extra demand and protects against Longs rolling over

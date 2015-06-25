@@ -25,31 +25,19 @@ import org.scalatest.{ FlatSpec, Matchers }
 class ObservableImplementationSpec extends FlatSpec with Matchers with TableDrivenPropertyChecks {
 
   "Observables" should "call onCompleted once all results are consumed" in {
-
     forAll(happyObservables) {
       (observable: Observable[Int], observer: TestObserver[Int]) =>
         {
-          testOnCompleted[Int](observable, observer)
+          observable.subscribe(observer)
+
+          val subscription = observer.subscription.get
+          subscription.request(1)
+          subscription.request(1000)
+
+          subscription.isUnsubscribed should equal(false)
+          observer.error should equal(None)
+          observer.completed should equal(true)
         }
-    }
-
-    forAll(happyListObservables) {
-      (observable: Observable[List[Int]], observer: TestObserver[List[Int]]) =>
-        {
-          testOnCompleted[List[Int]](observable, observer)
-        }
-    }
-
-    def testOnCompleted[I](observable: Observable[I], observer: TestObserver[I]) {
-      observable.subscribe(observer)
-
-      val subscription = observer.subscription.get
-      subscription.request(1)
-      subscription.request(1000)
-
-      subscription.isUnsubscribed should equal(false)
-      observer.error should equal(None)
-      observer.completed should equal(true)
     }
   }
 
@@ -62,48 +50,28 @@ class ObservableImplementationSpec extends FlatSpec with Matchers with TableDriv
           thrown should equal(true)
         }
     }
-
-    forAll(failingListObservables) {
-      (observable: Observable[List[Int]]) =>
-        {
-          var thrown = false
-          observable.subscribe((res: List[Int]) => (), (t: Throwable) => thrown = true)
-          thrown should equal(true)
-        }
-    }
   }
 
   it should "honor subscriptions and isUnsubscribed" in {
     forAll(happyObservables) {
       (observable: Observable[Int], observer: TestObserver[Int]) =>
         {
-          testSubscriptions[Int](observable, observer)
+          observable.subscribe(observer)
+
+          val subscription = observer.subscription.get
+          subscription.request(1)
+          subscription.request(2)
+          subscription.request(3)
+          subscription.request(4)
+          subscription.isUnsubscribed should equal(false)
+
+          subscription.unsubscribe()
+          subscription.isUnsubscribed should equal(true)
+
+          observer.error should equal(None)
+          observer.results.length should be <= 10
+          observer.completed should equal(false)
         }
-    }
-
-    forAll(happyListObservables) {
-      (observable: Observable[List[Int]], observer: TestObserver[List[Int]]) =>
-        {
-          testSubscriptions[List[Int]](observable, observer)
-        }
-    }
-
-    def testSubscriptions[I](observable: Observable[I], observer: TestObserver[I]) {
-      observable.subscribe(observer)
-
-      val subscription = observer.subscription.get
-      subscription.request(1)
-      subscription.request(2)
-      subscription.request(3)
-      subscription.request(4)
-      subscription.isUnsubscribed should equal(false)
-
-      subscription.unsubscribe()
-      subscription.isUnsubscribed should equal(true)
-
-      observer.error should equal(None)
-      observer.results.length should be <= 10
-      observer.completed should equal(false)
     }
   }
 
@@ -111,33 +79,22 @@ class ObservableImplementationSpec extends FlatSpec with Matchers with TableDriv
     forAll(happyObservables) {
       (observable: Observable[Int], observer: TestObserver[Int]) =>
         {
-          testSubscriptions[Int](observable, observer)
+          observable.subscribe(observer)
+
+          val subscription = observer.subscription.get
+          subscription.isUnsubscribed should equal(false)
+
+          subscription.unsubscribe()
+          subscription.isUnsubscribed should equal(true)
+
+          observer.error should equal(None)
+          observer.results shouldBe empty
+          observer.completed should equal(false)
+
+          subscription.request(1000)
+          observer.results shouldBe empty
+          observer.completed should equal(false)
         }
-    }
-
-    forAll(happyListObservables) {
-      (observable: Observable[List[Int]], observer: TestObserver[List[Int]]) =>
-        {
-          testSubscriptions[List[Int]](observable, observer)
-        }
-    }
-
-    def testSubscriptions[I](observable: Observable[I], observer: TestObserver[I]) {
-      observable.subscribe(observer)
-
-      val subscription = observer.subscription.get
-      subscription.isUnsubscribed should equal(false)
-
-      subscription.unsubscribe()
-      subscription.isUnsubscribed should equal(true)
-
-      observer.error should equal(None)
-      observer.results shouldBe empty
-      observer.completed should equal(false)
-
-      subscription.request(1000)
-      observer.results shouldBe empty
-      observer.completed should equal(false)
     }
   }
 
@@ -148,28 +105,22 @@ class ObservableImplementationSpec extends FlatSpec with Matchers with TableDriv
           testObserver[Int](observable, observer)
         }
     }
+  }
 
-    forAll(happyListObservables) {
-      (observable: Observable[List[Int]], observer: TestObserver[List[Int]]) =>
-        {
-          testObserver[List[Int]](observable, observer)
-        }
-    }
+  def testObserver[I](observable: Observable[I], observer: TestObserver[I]): Unit = {
+    val failObserver = TestObserver[I](new Observer[I] {
+      override def onError(throwable: Throwable): Unit = {}
 
-    def testObserver[I](observable: Observable[I], observer: TestObserver[I]): Unit = {
-      val failObserver = TestObserver[I](new Observer[I] {
-        override def onError(throwable: Throwable): Unit = {}
+      override def onSubscribe(subscription: Subscription): Unit = {}
 
-        override def onSubscribe(subscription: Subscription): Unit = {}
+      override def onComplete(): Unit = {}
 
-        override def onComplete(): Unit = {}
+      override def onNext(tResult: I): Unit = throw new Throwable("Failed action")
+    })
 
-        override def onNext(tResult: I): Unit = throw new Throwable("Failed action")
-      })
-      observable.subscribe(failObserver)
-      intercept[Throwable] {
-        observer.subscription.get.request(10)
-      }
+    observable.subscribe(failObserver)
+    intercept[Throwable] {
+      observer.subscription.get.request(10)
     }
   }
 
@@ -192,22 +143,11 @@ class ObservableImplementationSpec extends FlatSpec with Matchers with TableDriv
     forAll(happyObservables) {
       (observable: Observable[Int], observer: TestObserver[Int]) =>
         {
-          testObserver[Int](observable, observer)
+          observable.subscribe(observer)
+          intercept[IllegalArgumentException] {
+            observer.subscription.get.request(0)
+          }
         }
-    }
-
-    forAll(happyListObservables) {
-      (observable: Observable[List[Int]], observer: TestObserver[List[Int]]) =>
-        {
-          testObserver[List[Int]](observable, observer)
-        }
-    }
-
-    def testObserver[I](observable: Observable[I], observer: TestObserver[I]): Unit = {
-      observable.subscribe(observer)
-      intercept[IllegalArgumentException] {
-        observer.subscription.get.request(0)
-      }
     }
   }
 
@@ -215,25 +155,14 @@ class ObservableImplementationSpec extends FlatSpec with Matchers with TableDriv
     forAll(happyObservables) {
       (observable: Observable[Int], observer: TestObserver[Int]) =>
         {
-          testObserver[Int](observable, observer)
+          observable.subscribe(observer)
+          observer.subscription.get.request(Long.MaxValue - 1)
+          observer.subscription.get.request(Long.MaxValue)
+
+          observer.error should equal(None)
+          observer.results should not be empty
+          observer.completed should equal(true)
         }
-    }
-
-    forAll(happyListObservables) {
-      (observable: Observable[List[Int]], observer: TestObserver[List[Int]]) =>
-        {
-          testObserver[List[Int]](observable, observer)
-        }
-    }
-
-    def testObserver[I](observable: Observable[I], observer: TestObserver[I]): Unit = {
-      observable.subscribe(observer)
-      observer.subscription.get.request(Long.MaxValue - 1)
-      observer.subscription.get.request(Long.MaxValue)
-
-      observer.error should equal(None)
-      observer.results should not be empty
-      observer.completed should equal(true)
     }
   }
 
@@ -258,12 +187,6 @@ class ObservableImplementationSpec extends FlatSpec with Matchers with TableDriv
       ZipObservable[Int, Int](TestObservable[Int](failOn = failOn), TestObservable[Int]()).map[Int](a => a._1)
     )
 
-  val failingListObservables =
-    Table[Observable[List[Int]]](
-      "observable",
-      FoldLeftObservable[Int, List[Int]](TestObservable[Int](failOn = failOn), List[Int](), (l, i) => l :+ i)
-    )
-
   def happyObservables =
     Table(
       ("observable", "observer"),
@@ -282,12 +205,6 @@ class ObservableImplementationSpec extends FlatSpec with Matchers with TableDriv
       (RecoverWithObservable[Int, Int](TestObservable[Int](1 to 10, failOn = 1), { case t => TestObservable[Int]() }), TestObserver[Int]()),
       (IterableObservable((1 to 100).toStream), TestObserver[Int]()),
       (ZipObservable[Int, Int](TestObservable[Int](), TestObservable[Int]()).map[Int](a => a._1), TestObserver[Int]())
-    )
-
-  def happyListObservables =
-    Table[Observable[List[Int]], TestObserver[List[Int]]](
-      ("observable", "observer"),
-      (FoldLeftObservable[Int, List[Int]](TestObservable[Int](), List[Int](), (l, i) => l :+ i), TestObserver[List[Int]]())
     )
 
   def zippedObservables =
