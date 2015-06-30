@@ -98,7 +98,7 @@ private[scala] case class RecoverWithObservable[T, U >: T](
          * @param tResult the result to pass to the users observer
          */
         private def processNext(tResult: U): Unit = {
-          demand -= 1
+          addDemand(-1)
           observer.onNext(tResult)
         }
 
@@ -109,8 +109,10 @@ private[scala] case class RecoverWithObservable[T, U >: T](
          * @return the updated demand
          */
         private def addDemand(extraDemand: Long): Long = {
-          demand += extraDemand
-          if (demand < 0) demand = Long.MaxValue
+          this.synchronized {
+            demand += extraDemand
+            if (demand < 0) demand = Long.MaxValue
+          }
           demand
         }
 

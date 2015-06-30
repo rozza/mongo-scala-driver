@@ -112,8 +112,10 @@ private[scala] case class FlatMapObservable[T, S](observable: Observable[T], f: 
          * @return the updated demand
          */
         private def addDemand(extraDemand: Long): Long = {
-          demand += extraDemand
-          if (demand < 0) demand = Long.MaxValue
+          this.synchronized {
+            demand += extraDemand
+            if (demand < 0) demand = Long.MaxValue
+          }
           demand
         }
       }
