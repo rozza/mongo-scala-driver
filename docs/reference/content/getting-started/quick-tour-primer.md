@@ -20,7 +20,7 @@ for instructions on how to install the MongoDB Scala Driver.
 
 ## The Observable API
 
-One of the goals of the Scala driver is not force users to take on any specific library dependencies which may conflict with the users chosen libraries. To achieve this the Scala API makes use of an custom implementation of the Observer pattern which comprises three traits:
+The Scala driver is free of dependencies on any third-party frameworks for asynchronous programming. To achieve this the Scala API makes use of an custom implementation of the Observer pattern which comprises three traits:
 
 1. Observable
 2. Observer
@@ -43,8 +43,8 @@ The implementation draws inspiration from the [ReactiveX](http://reactivex.io/) 
 
 ## From Async Callbacks to Observables
 
-The MongoDB Scala Driver is built upon the MongoDB Async driver which is callback driven.
-The API mirrors the Async driver API and any methods that cause network IO return an instance of the 
+The MongoDB Scala Driver is built upon the callback-driven MongoDB async driver. The API mirrors the 
+async driver API and any methods that cause network IO return an instance of the 
 [`Observable[T]`]({{< apiref "org.mongodb.scala.Observable">}}) where `T` is the type of response for the operation. The 
 exception to that rule is for methods in the async driver that return a `Void` value in the callback. 
 As an `Observable[Void]` never calls `onNext` it stops it from being composable with other `Observables`, so  in these 

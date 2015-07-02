@@ -181,7 +181,7 @@ the first one). We can check to see if we have them all using the
 [count()]({{< apiref "org.mongodb.scala.MongoCollection@count():org.mongodb.scala.Observable[Long]">}}) method. 
 
 Lets chain the two operations together using a [`for`](http://docs.scala-lang.org/tutorials/tour/sequence-comprehensions.html) comprehension. The 
-following code should, insert the documents then count the number of documents and print the results:
+following code should insert the documents then count the number of documents and print the results:
 
 ```scala
 val insertAndCount = for {
