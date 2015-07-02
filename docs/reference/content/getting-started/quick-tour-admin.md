@@ -62,7 +62,7 @@ mongoClient.getDatabase("databaseToBeDropped").drop().headResult()
 
 Collections in MongoDB are created automatically simply by inserted a document into it. Using the 
 [`createCollection`]({{< apiref "org.mongodb.scala.MongoDatabase@createCollection(collectionName:String):org.mongodb.scala.Observable[org.mongodb.scala.Completed]">}}) method, 
-you can also create a collection explicitly in order to to customize its configuration. For example, to create a capped collection sized to 1 megabyte:
+you can also create a collection explicitly in order to customize its configuration. For example, to create a capped collection sized to 1 megabyte:
 
 ```scala
 database.createCollection("cappedCollection",
@@ -165,7 +165,7 @@ For more information about text search see the [text index]({{< docsref "/core/i
 
 ## Running a command
 
-Not all commands have a specific helper, however you can run any [command]({{< docsref "/reference/command">}})
+While not all commands have a specific helper, however you can run any [command]({{< docsref "/reference/command">}})
 by using the [`runCommand()`]({{< apiref "org.mongodb.scala.MongoDatabase@runCommand[TResult](command:org.bson.conversions.Bson)(implicite:org.mongodb.scala.Helpers.DefaultsTo[TResult,org.mongodb.scala.collection.immutable.Document],implicitct:scala.reflect.ClassTag[TResult]):org.mongodb.scala.Observable[TResult]">}}) 
 method.  Here we call the [buildInfo]({{ docsref "reference/command/buildInfo" }}) command:
 

@@ -176,7 +176,7 @@ As we haven't subscribed yet no documents have been inserted, lets chain togethe
 
 ## Count Documents in A Collection
 
-Once we've inserted the `documents` list we should have a total of 101 documents in the collection (the 100 we did in the loop, plus
+Once we've inserted the `documents` list we should, have a total of 101 documents in the collection (the 100 we did in the loop, plus
 the first one). We can check to see if we have them all using the
 [count()]({{< apiref "org.mongodb.scala.MongoCollection@count():org.mongodb.scala.Observable[Long]">}}) method. 
 
@@ -291,13 +291,13 @@ helpers can be used to build the projection parameter for the find operation and
 Below we'll sort the collection, exclude the `_id` field and output the first matching document:
 
 ```scala
-collection.find().projection(excludeId).first().printHeadResult()
+collection.find().projection(excludeId()).first().printHeadResult()
 ```
 
 ## Updating documents
 
 There are numerous [update operators](http://docs.mongodb.org/manual/reference/operator/update-field/)
-supported by MongoDB.
+supported by MongoDB.  We can use the [Updates]({{< apiref "org.mongodb.scala.model.Updates$">}}) helpers to help update documents in the database.
 
 To update at most a single document (may be 0 if none match the filter), use the 
 [`updateOne`]({{< apiref "org.mongodb.scala.MongoCollection@updateOne(filter:org.bson.conversions.Bson,update:org.bson.conversions.Bson):org.mongodb.scala.Observable[org.mongodb.scala.result.UpdateResult]">}})

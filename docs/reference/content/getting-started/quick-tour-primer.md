@@ -10,8 +10,8 @@ title = "Quick Tour Primer"
 
 # Quick Tour Primer
 
-The following code snippets come from the `Helpers.scala` example code
-that can be found with the [examples source]({{< srcref "examples/tour/src/main/tour/Helpers.scala">}}).
+The aim of this guide is to provide background about the Scala driver and its asynchronous API before going onto 
+looking at how to use the driver and MongoDB.
 
 {{% note %}}
 See the [installation guide]({{< relref "getting-started/installation-guide.md" >}})
@@ -20,9 +20,7 @@ for instructions on how to install the MongoDB Scala Driver.
 
 ## The Observable API
 
-One of the core goals of the MongoDB JVM Drivers is to be dependency free and not force users to take on a specific library dependency.
-Dependency management can cause interoperability and maintainability issues, which can be costly to maintain. 
-The Scala API makes use of an custom implementation of the Observer pattern which comprises three traits:
+One of the goals of the Scala driver is not force users to take on any specific library dependencies which may conflict with the users chosen libraries. To achieve this the Scala API makes use of an custom implementation of the Observer pattern which comprises three traits:
 
 1. Observable
 2. Observer
@@ -40,7 +38,7 @@ This means that `onSubscribe` is always signalled, followed by a possibly unboun
 followed by an `onError` signal if there is a failure, or an `onComplete` signal when no more elements are available—all as long as 
 the `Subscription` is not cancelled.
 
-The implementation draws inspiration from the [ReactiveX](http://reactivex.io/) and [reactive streams](http://www.reactive-streams.org) libraries.
+The implementation draws inspiration from the [ReactiveX](http://reactivex.io/) and [reactive streams](http://www.reactive-streams.org) libraries and provides easy interoperability with them.
 
 
 ## From Async Callbacks to Observables
@@ -49,21 +47,21 @@ The MongoDB Scala Driver is built upon the MongoDB Async driver which is callbac
 The API mirrors the Async driver API and any methods that cause network IO return an instance of the 
 [`Observable[T]`]({{< apiref "org.mongodb.scala.Observable">}}) where `T` is the type of response for the operation. The 
 exception to that rule is for methods in the async driver that return a `Void` value in the callback. 
-As an `Observable[Void]` is problematic due it never calling `onNext` and stopping it being composable with other `Observables`. 
-In these circumstances we return a [`Observable[Completed]`]({{< apiref "org/mongodb/scala/Completed.html">}}) for the operation instead.
+As an `Observable[Void]` never calls `onNext` it stops it from being composable with other `Observables`, so  in these 
+circumstances we return a [`Observable[Completed]`]({{< apiref "org/mongodb/scala/Completed.html">}}) for the operation instead.
 
 ### Observable
 
 The [`Observable`]({{< apiref "org.mongodb.scala.Observable">}}) is a trait wrapping the Java interface and where appropriate 
-implementations of the trait extend it to make a fluent API, on such example is [`FindObservable`]({{< apiref "org.mongodb.scala.FindObservable">}}) 
-accessible through `collection.find()`.
+implementations of the trait extend it to make a fluent API. One such example is 
+[`FindObservable`]({{< apiref "org.mongodb.scala.FindObservable">}}), accessible through `collection.find()`.
 
 {{% note %}}
-All `Observables` returned from the API are cold, meaning that nothing happens until they are subscribed to. As such an observer is
+All `Observables` returned from the API are cold, meaning that no I/O happens until they are subscribed to. As such an observer is
  guaranteed to see the whole sequence from the beginning. So just creating an `Observable` won't cause any network IO, and it's not until 
 `Subscriber.request()` is called that the driver executes the operation.  
 
-Each `Subscription` to an `Observable` relates to a single MongoDB operation and it's "Subscriber" will receive it's own specific set of results. 
+Each `Subscription` to an `Observable` relates to a single MongoDB operation and its "Subscriber" will receive it's own specific set of results. 
 {{% /note %}}
 
 ### Back Pressure
@@ -74,9 +72,9 @@ be taken to ensure that the `Observer` has the capacity to handle all the result
 
 ## Helpers used in the Quick Tour
 
-For the Quick Tour we custom implicit helpers to get and print results and although this is an artificial scenario for asynchronous code we 
+For the Quick Tour we use custom implicit helpers defined in [`Helpers.scala`]({{< srcref "examples/tour/src/main/tour/Helpers.scala">}})). These helpers get and print results and although this is an artificial scenario for asynchronous code we 
 block on  the results of one example before starting the next, so as to ensure the state of the database. [`Helpers.scala`]({{< srcref "examples/tour/src/test/scala/tour/Helpers.scala">}}) 
-provides helpers that:
+provides the following helpers:
 
 *   results()
 

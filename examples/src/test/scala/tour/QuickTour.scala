@@ -86,7 +86,7 @@ object QuickTour {
     collection.find(exists("i")).sort(descending("i")).first().printHeadResult()
 
     // Projection
-    collection.find().projection(excludeId).first().printHeadResult()
+    collection.find().projection(excludeId()).first().printHeadResult()
 
     // Update One
     collection.updateOne(equal("i", 10), set("i", 110)).printHeadResult("Update Result: ")

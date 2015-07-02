@@ -16,14 +16,14 @@ refer to our own [support channels](http://www.mongodb.org/about/support) docume
 
 ## Bugs / Feature Requests
 
-If you think you’ve found a bug or want to see a new feature in the Java driver,
+If you think you’ve found a bug or want to see a new feature in the Scala driver,
 please open a case in our issue management tool, JIRA:
 
 - [Create an account and login](https://jira.mongodb.org).
 - Navigate to [the SCALA project](https://jira.mongodb.org/browse/SCALA).
 - Click **Create Issue** - Please provide as much information as possible about the issue type and how to reproduce it.
 
-Bug reports in JIRA for the Java RX driver and the Core Server (i.e. SERVER) project are **public**.
+Bug reports in JIRA for the Scala driver and the Core Server (i.e. SERVER) project are **public**.
 
 If you’ve identified a security vulnerability in a driver or any other
 MongoDB project, please report it according to the [instructions here](http://docs.mongodb.org/manual/tutorial/create-a-vulnerability-report).
