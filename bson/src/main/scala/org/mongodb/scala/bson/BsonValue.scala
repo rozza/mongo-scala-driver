@@ -27,13 +27,33 @@ import org.bson.{BsonDocument => JBsonDocument}
 
 /**
  * Companion helper for a BsonArray
+ *
  * @since 1.0
  */
 object BsonArray {
   import BsonMagnets._
 
+  /**
+   * Create an empty BsonArray
+   * @return the BsonArray
+   */
   def apply(): BsonArray = new BsonArray()
+
+  /**
+   * Create a BsonArray from the provided values
+   *
+   * @param elems the `BsonValues` to become the `BsonArray`
+   * @return the BsonArray
+   */
   def apply(elems: Iterable[BsonValue]): BsonArray = new BsonArray(elems.toList.asJava)
+
+  /**
+   * Creates a BsonArray from the provided values
+   *
+   *
+   * @param elems the values that can be transformed into a `BsonValue`
+   * @return the BsonArray
+   */
   def apply(elems: CanBeBsonValue*): BsonArray = new BsonArray(elems.map(_.value).asJava)
 }
 
@@ -42,6 +62,12 @@ object BsonArray {
  * @since 1.0
  */
 object BsonBinary {
+  /**
+   * Creates the BsonBinary form the provided bytes
+   *
+   * @param value the bytes
+   * @return the BsonBinary
+   */
   def apply(value: Array[Byte]): BsonBinary = new BsonBinary(value)
 }
 
@@ -50,6 +76,12 @@ object BsonBinary {
  * @since 1.0
  */
 object BsonBoolean {
+  /**
+   * Creates a `BsonBoolean`
+   *
+   * @param value the value
+   * @return the BsonBoolean
+   */
   def apply(value: Boolean): BsonBoolean = new BsonBoolean(value)
 }
 
@@ -58,9 +90,21 @@ object BsonBoolean {
  * @since 1.0
  */
 object BsonDateTime {
+  /**
+   * Creates a BsonDateTime
+   *
+   * @param value the number of milliseconds since the Unix epoch
+   * @return the BsonDateTime
+   */
   def apply(value: Long): BsonDateTime = new BsonDateTime(value)
 
-  def apply(millis: Date): BsonDateTime = new BsonDateTime(millis.getTime)
+  /**
+   * Creates a BsonDateTime
+   *
+   * @param date a `java.util.Date`
+   * @return the BsonDateTime
+   */
+  def apply(date: Date): BsonDateTime = new BsonDateTime(date.getTime)
 }
 
 /**
@@ -71,20 +115,43 @@ object BsonDocument {
 
   import BsonMagnets._
 
+  /**
+   * Creates an empty `BsonDocument`
+   * @return the BsonDocument
+   */
   def apply(): BsonDocument = new JBsonDocument()
 
+  /**
+   * Creates a `BsonDocument` from the key value pairs
+   *
+   * @param elems a traversable of key, value pairs
+   * @return the BsonDocument
+   */
   def apply(elems: Traversable[(String, BsonValue)]): BsonDocument = {
     val bsonDocument = new JBsonDocument()
     elems.foreach(kv => bsonDocument.put(kv._1, kv._2))
     bsonDocument
   }
 
+
+  /**
+   * Creates a `BsonDocument` from key value pairs
+   *
+   * @param elems the key, value pairs
+   * @return the BsonDocument
+   */
   def apply(elems: CanBeBsonElement*): BsonDocument = {
     val bsonDocument = new JBsonDocument()
     elems.foreach(elem => bsonDocument.put(elem.key, elem.value))
     bsonDocument
   }
 
+  /**
+   * Creates a `BsonDocument` from a json String
+   *
+   * @param json the json string
+   * @return the BsonDocumebt
+   */
   def apply(json: String): BsonDocument = JBsonDocument.parse(json)
 }
 
@@ -93,6 +160,12 @@ object BsonDocument {
  * @since 1.0
  */
 object BsonDouble {
+  /**
+   * Creates a `BsonDouble`
+   *
+   * @param value the BsonDouble value
+   * @return the BsonDouble
+   */
   def apply(value: Double): BsonDouble = new BsonDouble(value)
 }
 
@@ -101,6 +174,12 @@ object BsonDouble {
  * @since 1.0
  */
 object BsonInt32 {
+  /**
+   * Creates a `BsonInt32`
+   *
+   * @param value the BsonInt32 value
+   * @return the BsonInt32
+   */
   def apply(value: Int): BsonInt32 = new BsonInt32(value)
 }
 
@@ -109,6 +188,12 @@ object BsonInt32 {
  * @since 1.0
  */
 object BsonInt64 {
+  /**
+   * Creates a `BsonInt64`
+   *
+   * @param value the BsonInt64 value
+   * @return the BsonInt64
+   */
   def apply(value: Long): BsonInt64 = new BsonInt64(value)
 }
 
@@ -117,6 +202,12 @@ object BsonInt64 {
  * @since 1.0
  */
 object BsonJavaScript {
+  /**
+   * Creates a `BsonJavaScript`
+   *
+   * @param value the javascript function
+   * @return the BsonJavaScript
+   */
   def apply(value: String): BsonJavaScript = new BsonJavaScript(value)
 }
 
@@ -127,10 +218,31 @@ object BsonJavaScript {
 object BsonJavaScriptWithScope {
   import BsonMagnets._
 
+  /**
+   * Creates a `BsonJavaScript`
+   *
+   * @param value the javascript function
+   * @param scope the function scope
+   * @return the BsonJavaScript
+   */
   def apply(value: String, scope: BsonDocument): BsonJavaScriptWithScope = new BsonJavaScriptWithScope(value, scope)
 
+  /**
+   * Creates a `BsonJavaScript`
+   *
+   * @param value the javascript function
+   * @param scope the function scope
+   * @return the BsonJavaScript
+   */
   def apply(value: String, scope: CanBeBsonElement*): BsonJavaScriptWithScope = new BsonJavaScriptWithScope(value, BsonDocument(scope: _*))
 
+  /**
+   * Creates a `BsonJavaScript`
+   *
+   * @param value the javascript function
+   * @param scope the function scope
+   * @return the BsonJavaScript
+   */
   def apply(value: String, scope: Traversable[(String, BsonValue)]): BsonJavaScriptWithScope = new BsonJavaScriptWithScope(value, BsonDocument(scope))
 }
 
@@ -139,6 +251,10 @@ object BsonJavaScriptWithScope {
  * @since 1.0
  */
 object BsonMaxKey {
+  /**
+   * Creates a `BsonMaxKey`
+   * @return the BsonMaxKey
+   */
   def apply(): BsonMaxKey = new BsonMaxKey()
 }
 
@@ -147,6 +263,10 @@ object BsonMaxKey {
  * @since 1.0
  */
 object BsonMinKey {
+  /**
+   * Creates a `BsonMinKey`
+   * @return the BsonMinKey
+   */
   def apply(): BsonMinKey = new BsonMinKey()
 }
 
@@ -155,6 +275,10 @@ object BsonMinKey {
  * @since 1.0
  */
 object BsonNull {
+  /**
+   * Creates a `BsonNull`
+   * @return the BsonNull
+   */
   def apply(): BsonNull = new BsonNull()
 }
 
@@ -163,10 +287,29 @@ object BsonNull {
  * @since 1.0
  */
 object BsonNumber {
+
+  /**
+   * Creates a `BsonNumber`
+   *
+   * @param value the value
+   * @return the BsonNumber
+   */
   def apply(value: Int): BsonNumber = new BsonInt32(value)
 
+  /**
+   * Creates a `BsonNumber`
+   *
+   * @param value the value
+   * @return the BsonNumber
+   */
   def apply(value: Long): BsonNumber = new BsonInt64(value)
 
+  /**
+   * Creates a `BsonNumber`
+   *
+   * @param value the value
+   * @return the BsonNumber
+   */
   def apply(value: Double): BsonNumber = new BsonDouble(value)
 }
 
@@ -175,8 +318,28 @@ object BsonNumber {
  * @since 1.0
  */
 object BsonObjectId {
+
+  /**
+   * Creates a new `BsonObjectId`
+   *
+   * @return the BsonObjectId
+   */
   def apply(): BsonObjectId = new BsonObjectId(new ObjectId())
+
+  /**
+   * Creates a new `BsonObjectId`
+   *
+   * @param value the 24-byte hexadecimal string representation of an `ObjectId`.
+   * @return the BsonObjectId
+   */
   def apply(value: String): BsonObjectId = new BsonObjectId(new ObjectId(value))
+
+  /**
+   * Creates a new `BsonObjectId`
+   *
+   * @param value the `ObjectId`.
+   * @return the BsonObjectId
+   */
   def apply(value: ObjectId): BsonObjectId = new BsonObjectId(value)
 }
 
@@ -185,10 +348,30 @@ object BsonObjectId {
  * @since 1.0
  */
 object BsonRegularExpression {
+
+  /**
+   * Creates a new `BsonRegularExpression`
+   *
+   * @param value the `Regex`.
+   * @return the BsonRegularExpression
+   */
   def apply(value: Regex): BsonRegularExpression = new BsonRegularExpression(value.regex)
 
+  /**
+   * Creates a new `BsonRegularExpression`
+   *
+   * @param value the Regex string.
+   * @return the BsonRegularExpression
+   */
   def apply(value: String): BsonRegularExpression = new BsonRegularExpression(value)
 
+  /**
+   * Creates a new `BsonRegularExpression`
+   *
+   * @param value the Regex string.
+   * @param options the regex options tring
+   * @return the BsonRegularExpression
+   */
   def apply(value: String, options: String): BsonRegularExpression = new BsonRegularExpression(value, options)
 }
 
@@ -197,6 +380,12 @@ object BsonRegularExpression {
  * @since 1.0
  */
 object BsonString {
+  /**
+   * Creates a new `BsonString`
+   *
+   * @param value the string.
+   * @return the BsonString
+   */
   def apply(value: String): BsonString = new BsonString(value)
 }
 
@@ -205,6 +394,12 @@ object BsonString {
  * @since 1.0
  */
 object BsonSymbol {
+  /**
+   * Creates a new `BsonSymbol`
+   *
+   * @param value the Symbol.
+   * @return the BsonSymbol
+   */
   def apply(value: Symbol): BsonSymbol = new BsonSymbol(value.name)
 }
 
@@ -213,7 +408,18 @@ object BsonSymbol {
  * @since 1.0
  */
 object BsonTimestamp {
+  /**
+   * Creates a new `BsonTimestamp`
+   * @return the BsonTimestamp
+   */
   def apply(): BsonTimestamp = new BsonTimestamp(0, 0)
+
+  /**
+   * Creates a new `BsonTimestamp`
+   * @param time the time in seconds since epoch
+   * @param inc  an incrementing ordinal for operations within a given second
+   * @return the BsonTimestamp
+   */
   def apply(time: Int, inc: Int): BsonTimestamp = new BsonTimestamp(time, inc)
 }
 
@@ -222,5 +428,9 @@ object BsonTimestamp {
  * @since 1.0
  */
 object BsonUndefined {
+  /**
+   * Creates a new `BsonUndefined`
+   * @return the BsonUndefined
+   */
   def apply(): BsonUndefined = new BsonUndefined()
 }
