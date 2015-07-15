@@ -134,13 +134,15 @@ object mongoimport {
    */
   private def importJson(collection: MongoCollection[Document], lines: Iterator[String], promise: Promise[Completed]): Promise[Completed] = {
     lines.hasNext match {
-      case true => collection.insertMany(lines.take(1000).map(json => Document(json)).toSeq).subscribe(
-        (completed: Completed) => lines.hasNext match {
-            case true => importJson(collection, lines, promise)
+      case true =>
+        val batch = lines.take(1000)
+        collection.insertMany(batch.map(json => Document(json)).toSeq).subscribe(
+          (completed: Completed) => batch.hasNext match {
+            case true => importJson(collection, batch, promise)
             case false => promise.success(completed)
           },
-        (failed: Throwable) => promise.failure(failed)
-      )
+          (failed: Throwable) => promise.failure(failed)
+        )
       case false => promise.success(Completed())
     }
     promise

@@ -153,7 +153,7 @@ object mongoexport {
 
     output.write("")
     cursor.subscribe(
-      (doc: Document) => output.write(s"${doc.toJson()}\r\n"),
+      (doc: Document) => output.println(doc.toJson()),
       (t: Throwable) => promise.failure(t),
       () => {
         output.close()
