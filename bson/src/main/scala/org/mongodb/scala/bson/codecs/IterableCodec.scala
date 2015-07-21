@@ -31,6 +31,8 @@ import org.bson.codecs.configuration.CodecRegistry
  */
 object IterableCodec {
 
+  def apply(registry: CodecRegistry): IterableCodec = apply(registry, BsonTypeClassMap())
+
   def apply(registry: CodecRegistry, bsonTypeClassMap: BsonTypeClassMap): IterableCodec = apply(registry, bsonTypeClassMap, None)
 
   def apply(registry: CodecRegistry, bsonTypeClassMap: BsonTypeClassMap, valueTransformer: Option[Transformer]): IterableCodec = {
@@ -90,6 +92,7 @@ case class IterableCodec(registry: CodecRegistry, bsonTypeClassMap: BsonTypeClas
 
   private def readValue(reader: BsonReader, decoderContext: DecoderContext): Any = {
     reader.getCurrentBsonType match {
+      case null => readMap(reader, decoderContext) // scalastyle:ignore
       case BsonType.NULL =>
         reader.readNull()
         null // scalastyle:ignore
@@ -103,6 +106,7 @@ case class IterableCodec(registry: CodecRegistry, bsonTypeClassMap: BsonTypeClas
 
   private def readMap(reader: BsonReader, decoderContext: DecoderContext): Map[String, _] = {
     val map = mutable.Map[String, Any]()
+    reader.getCurrentName
     reader.readStartDocument()
     while (reader.readBsonType ne BsonType.END_OF_DOCUMENT) {
       map += (reader.readName -> readValue(reader, decoderContext))
