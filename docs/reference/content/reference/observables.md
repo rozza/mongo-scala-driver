@@ -15,7 +15,7 @@ The MongoDB Scala Driver is an asynchronous and non blocking driver. Using the `
 For asynchronous operations there are three interfaces [`Observable`]({{< apiref "org.mongodb.scala.Observable" >}}), [`Subscription`]({{< apiref "org.mongodb.scala.Subscription" >}}) and [`Observer`]({{< apiref "org.mongodb.scala.Observer" >}}).
 
 {{% note %}}
-The interfaces are the similar to `Publisher`, `Subscription` and `Subscriber` interfaces from the [reactive streams](http://www.reactive-streams.org/) JVM implementation.  However, we prefer the name `Observerable` to `Publisher` and `Observer` to `Subscriber` for readability purposes.
+The interfaces are similar to `Publisher`, `Subscription` and `Subscriber` interfaces from the [reactive streams](http://www.reactive-streams.org/) JVM implementation.  However, we prefer the name `Observerable` to `Publisher` and `Observer` to `Subscriber` for readability purposes.
 {{% /note %}}
 
 ## Observable
@@ -34,7 +34,7 @@ On subscription to an `Observable[TResult]` the `Observer` will be passed the `S
 `onSubscribe(subscription: Subscription)`. Demand for results is signaled via the `Subscription` and any results are passed to the 
 `onNext(result: TResult)` method.  If there is an error for any reason the `onError(e: Throwable)` will be 
 called and no more events passed to the `Observer`. Alternatively, when the `Observer` has consumed all the results from the `Observable` 
-the `onComplete()` method is called.
+the `onComplete()` method will be called.
 
 
 ## Back Pressure
@@ -90,7 +90,19 @@ collection.find().subscribe((doc: Document) => println(doc.toJson()),
                             () => println("Completed!"))
 ```
 
-The `ObservableImplicits` trait also provides Monadic operators to make chaining and work with `Observable` instances simpler:
+The `ScalaObservable` implicit class also provides the following Monadic operators to make chaining and working with `Observable` instances 
+simpler:
+
+
+```scala
+GenerateHtmlObservable().andThen({
+  case Success(html: String) => renderHtml(html)
+  case Failure(t) => renderHttp500
+})
+
+```
+
+The full list of Monadic operators available are:
 
  - *[`andThen`]({{< apiref "org.mongodb.scala.ObservableImplicits$ScalaObservable@andThen[U](pf:PartialFunction[scala.util.Try[T],U]):org.mongodb.scala.Observable[T]">}})*: 
     Allows the chaining of Observables. 
@@ -123,4 +135,3 @@ The `ObservableImplicits` trait also provides Monadic operators to make chaining
     Provides for-comprehensions support to Observables.
  - *[`zip`]({{< apiref "org.mongodb.scala.ObservableImplicits$ScalaObservable@zip[U](that:org.mongodb.scala.Observable[U]):org.mongodb.scala.Observable[(T,U)]">}})* :
     Zips the values of this and that `Observable`, and creates a new `Observable` holding the tuple of their results.
-

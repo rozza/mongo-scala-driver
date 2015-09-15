@@ -28,7 +28,7 @@ val collection: MongoCollection[Document] = database.getCollection("mycoll")
 class that clients use to insert or replace documents in a collection, and the default type returned from `find` and `aggregate`.
  
 The single-argument `getCollection` method returns an instance of `MongoCollection[Document]`, and so with this type of collection 
-an application uses instances of the `Document` class:
+an application uses instances of the immutable [`Document`]({{< relref "bson/documents.md#immutable-documents">}}) class:
 
 ```scala
 val collection: MongoCollection[Document] = database.getCollection("mycoll")
@@ -113,21 +113,21 @@ that with a `CodecRegistry`.
 // Replaces the default UuidCodec with one that uses the new standard UUID representation
 val codecRegistry: CodecRegistry = 
 CodecRegistries.fromRegistries(CodecRegistries.fromCodecs(new UuidCodec(UuidRepresentation.STANDARD)),
-                               MongoClient.getDefaultCodecRegistry());
+                               MongoClient.getDefaultCodecRegistry())
 
 // globally
-val clientSettings: MongoClientSettings = MongoClients.create("mongodb://localhost").getSettings();
-newClientSettings = MongoClientSettings.builder(clientSettings).codecRegistry(codecRegistry).build();
-val client: MongoClient = MongoClient(newClientSettings);
+val clientSettings: MongoClientSettings = MongoClients.create("mongodb://localhost").getSettings()
+newClientSettings = MongoClientSettings.builder(clientSettings).codecRegistry(codecRegistry).build()
+val client: MongoClient = MongoClient(newClientSettings)
  
 
 // or per database
 val database: MongoDatabase = client.getDatabase("mydb")
-                               .withCodecRegistry(codecRegistry);
+                                    .withCodecRegistry(codecRegistry)
 
 // or per collection
 val collection: MongoCollection<Document> = database.getCollection("mycoll")
-                                               .withCodecRegistry(codecRegistry);
+                                                    .withCodecRegistry(codecRegistry)
 ```
 
 
