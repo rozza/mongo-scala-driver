@@ -16,10 +16,6 @@
 
 package org.mongodb.scala
 
-import java.util.concurrent.TimeUnit
-
-import scala.concurrent.duration.Duration
-
 import com.mongodb.{ WriteConcern => JWriteConcern }
 
 /**
@@ -41,6 +37,14 @@ import com.mongodb.{ WriteConcern => JWriteConcern }
  * - `journal`: If true block until write operations have been committed to the journal. Cannot be used in combination with `fsync`.
  * Prior to MongoDB 2.6 this option was ignored if the server was running without journaling.  Starting with MongoDB 2.6
  * write operations will fail with an exception if this option is used when the server is running without journaling.
+ *
+ * == Implicit helper ==
+ *
+ * The [[ScalaWriteConcern]] implicit allows for chainable building of the WriteConcern eg:
+ *
+ * ```
+ *  val myWriteConcern = WriteConcern.ACKNOWLEDGED.withJournal(true)).withWTimeout(Duration(10, TimeUnit.MILLISECONDS))
+ * ```
  *
  * @since 1.0
  */
@@ -93,25 +97,9 @@ object WriteConcern {
   /**
    * Tag based Write Concern with wtimeout=0, fsync=false, and j=false
    *
-   * @param w Write Concern tag or "majority", representing the servers to ensure write propagation to before acknowledgment.
+   * @param w Write Concern tag set name or "majority", representing the servers to ensure write propagation to before acknowledgment.
    *          Do not use string representation of integer values for w.
    */
   def apply(w: String): JWriteConcern = new JWriteConcern(w)
-
-  /**
-   * Calls ``WriteConcern(w: Int, wtimeout: Int, fsync: Boolean)` with fsync=false
-   *
-   * @param w        number of writes
-   * @param wtimeout timeout for write operation
-   */
-  def apply(w: Int, wtimeout: Int): JWriteConcern = new JWriteConcern(w, wtimeout)
-
-  /**
-   * Constructs an instance with the given integer-based value for w and the given value for wTimeoutMS.
-   *
-   * @param w          the w value, which must be >= 0
-   * @param wTimeout the wTimeout in milliseconds, which must be >= 0
-   */
-  def apply(w: Int, wTimeout: Duration): JWriteConcern = new JWriteConcern(w, wTimeout.toMillis.toInt)
 
 }

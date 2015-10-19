@@ -104,8 +104,6 @@ class ScalaPackageSpec extends FlatSpec with Matchers {
 
     WriteConcern("Majority") should equal(new com.mongodb.WriteConcern("Majority"))
 
-    WriteConcern(1, 1) should equal(new com.mongodb.WriteConcern(1, 1))
-
     WriteConcern(1).withJournal(true) should equal(new com.mongodb.WriteConcern(1).withJ(true))
 
     WriteConcern("Majority").withWTimeout(Duration(10, TimeUnit.MILLISECONDS)) should equal(new com.mongodb.WriteConcern("Majority", 10, false, false))
