@@ -81,6 +81,25 @@ package object model {
   }
 
   /**
+   * The default options for a collection to apply on the creation of indexes.
+   *
+   * @note Requires MongoDB 3.2 or greater
+   * @see [[http://docs.mongodb.org/manual/reference/command/createIndexes Index options
+   * @since 1.1
+   */
+  type IndexOptionDefaults = com.mongodb.client.model.IndexOptionDefaults
+
+  /**
+   * Options for creating an index
+   */
+  object IndexOptionDefaults {
+    /**
+     * Construct a new instance.
+     */
+    def apply(): IndexOptionDefaults = new com.mongodb.client.model.IndexOptionDefaults()
+  }
+
+  /**
    * A model describing the removal of all documents matching the query filter.
    *
    * @tparam TResult the type of document to update.  In practice this doesn't actually apply to updates but is here for consistency with the
@@ -92,7 +111,6 @@ package object model {
    * A model describing the removal of all documents matching the query filter.
    */
   object DeleteManyModel {
-
     def apply(filter: Bson): DeleteManyModel[Nothing] = new com.mongodb.client.model.DeleteManyModel(filter)
   }
 
@@ -272,6 +290,13 @@ package object model {
   type PushOptions = com.mongodb.client.model.PushOptions
 
   /**
+   * The options to apply to a `\$push` update operator.
+   */
+  object PushOptions {
+    def apply(): PushOptions = new com.mongodb.client.model.PushOptions()
+  }
+
+  /**
    * Indicates which document to return, the original document before change or the document after the change
    */
   type ReturnDocument = com.mongodb.client.model.ReturnDocument
@@ -321,8 +346,6 @@ package object model {
   type TextSearchOptions = com.mongodb.client.model.TextSearchOptions
 
   /**
-<<<<<<< HEAD
-=======
    * Text search options for the [[Filters]] text helper
    * @since 1.1
    */
@@ -357,7 +380,6 @@ package object model {
   }
 
   /**
->>>>>>> 886e136... FILFOLD
    * A model describing an update to all documents that matches the query filter. The update to apply must include only update
    * operators.
    *
@@ -439,6 +461,28 @@ package object model {
      */
     def apply(filter: Bson, update: Bson, updateOptions: UpdateOptions): UpdateOneModel[Nothing] =
       new com.mongodb.client.model.UpdateOneModel(filter, update, updateOptions)
+  }
+
+  /**
+   * The options for an unwind aggregation pipeline stage
+   *
+   * @Note Requires MongoDB 3.2 or greater
+   * @since 1.1
+   */
+  type UnwindOptions = com.mongodb.client.model.UnwindOptions
+
+  /**
+   * The options for an unwind aggregation pipeline stage
+   *
+   * @note Requires MongoDB 3.2 or greater
+   * @since 1.1
+   */
+  object UnwindOptions {
+
+    /**
+     * Construct a new instance.
+     */
+    def apply(): UnwindOptions = new com.mongodb.client.model.UnwindOptions()
   }
 
   /**
