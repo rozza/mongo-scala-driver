@@ -81,6 +81,25 @@ package object model {
   }
 
   /**
+   * The default options for a collection to apply on the creation of indexes.
+   *
+   * @note Requires MongoDB 3.2 or greater
+   * @see [[http://docs.mongodb.org/manual/reference/command/createIndexes Index options
+   * @since 1.1
+   */
+  type IndexOptionDefaults = com.mongodb.client.model.IndexOptionDefaults
+
+  /**
+   * Options for creating an index
+   */
+  object IndexOptionDefaults {
+    /**
+     * Construct a new instance.
+     */
+    def apply(): IndexOptionDefaults = new com.mongodb.client.model.IndexOptionDefaults()
+  }
+
+  /**
    * A model describing the removal of all documents matching the query filter.
    *
    * @tparam TResult the type of document to update.  In practice this doesn't actually apply to updates but is here for consistency with the
@@ -92,7 +111,6 @@ package object model {
    * A model describing the removal of all documents matching the query filter.
    */
   object DeleteManyModel {
-
     def apply(filter: Bson): DeleteManyModel[Nothing] = new com.mongodb.client.model.DeleteManyModel(filter)
   }
 
@@ -225,6 +243,28 @@ package object model {
   }
 
   /**
+   * The options to apply to an operation that inserts a single document into a collection.
+   *
+   * @note Requires MongoDB 3.2 or greater
+   * @since 1.1
+   */
+  type InsertOneOptions = com.mongodb.client.model.InsertOneOptions
+
+  /**
+   * The options to apply to an operation that inserts a single document into a collection.
+   *
+   * @note Requires MongoDB 3.2 or greater
+   * @since 1.1
+   */
+  object InsertOneOptions {
+
+    /**
+     * Construct a new instance.
+     */
+    def apply(): InsertOneOptions = new com.mongodb.client.model.InsertOneOptions()
+  }
+
+  /**
    * A model describing an insert of a single document.
    *
    * @tparam TResult the type of document to insert. This can be of any type for which a `Codec` is registered
@@ -272,6 +312,13 @@ package object model {
   type PushOptions = com.mongodb.client.model.PushOptions
 
   /**
+   * The options to apply to a `\$push` update operator.
+   */
+  object PushOptions {
+    def apply(): PushOptions = new com.mongodb.client.model.PushOptions()
+  }
+
+  /**
    * Indicates which document to return, the original document before change or the document after the change
    */
   type ReturnDocument = com.mongodb.client.model.ReturnDocument
@@ -310,6 +357,48 @@ package object model {
      */
     def apply[TResult](filter: Bson, replacement: TResult, updateOptions: UpdateOptions): ReplaceOneModel[TResult] =
       new com.mongodb.client.model.ReplaceOneModel[TResult](filter, replacement, updateOptions)
+  }
+
+  /**
+   * Text search options for the [[Filters]] text helper
+   *
+   * @see [[http://docs.mongodb.org/manual/reference/operator/query/text \$text]]
+   * @since 1.1
+   */
+  type TextSearchOptions = com.mongodb.client.model.TextSearchOptions
+
+  /**
+   * Text search options for the [[Filters]] text helper
+   * @since 1.1
+   */
+  object TextSearchOptions {
+
+    /**
+     * Construct a new instance.
+     */
+    def apply(): TextSearchOptions = new com.mongodb.client.model.TextSearchOptions()
+  }
+
+  /**
+   * Validation options for documents being inserted or updated in a collection
+   *
+   * @note Requires MongoDB 3.2 or greater
+   * @since 1.1
+   */
+  type ValidationOptions = com.mongodb.client.model.ValidationOptions
+
+  /**
+   * Validation options for documents being inserted or updated in a collection
+   *
+   * @note Requires MongoDB 3.2 or greater
+   * @since 1.1
+   */
+  object ValidationOptions {
+
+    /**
+     * Construct a new instance.
+     */
+    def apply(): ValidationOptions = new com.mongodb.client.model.ValidationOptions()
   }
 
   /**
@@ -395,6 +484,44 @@ package object model {
     def apply(filter: Bson, update: Bson, updateOptions: UpdateOptions): UpdateOneModel[Nothing] =
       new com.mongodb.client.model.UpdateOneModel(filter, update, updateOptions)
   }
+
+  /**
+   * The options for an unwind aggregation pipeline stage
+   *
+   * @note Requires MongoDB 3.2 or greater
+   * @since 1.1
+   */
+  type UnwindOptions = com.mongodb.client.model.UnwindOptions
+
+  /**
+   * The options for an unwind aggregation pipeline stage
+   *
+   * @note Requires MongoDB 3.2 or greater
+   * @since 1.1
+   */
+  object UnwindOptions {
+
+    /**
+     * Construct a new instance.
+     */
+    def apply(): UnwindOptions = new com.mongodb.client.model.UnwindOptions()
+  }
+
+  /**
+   * Determines whether to error on invalid documents or just warn about the violations but allow invalid documents.
+   *
+   * @note Requires MongoDB 3.2 or greater
+   * @since 1.1
+   */
+  type ValidationAction = com.mongodb.client.model.ValidationAction
+
+  /**
+   * Determines how strictly MongoDB applies the validation rules to existing documents during an insert or update.
+   *
+   * @note Requires MongoDB 3.2 or greater
+   * @since 1.1
+   */
+  type ValidationLevel = com.mongodb.client.model.ValidationLevel
 
   /**
    * A base class for models that can be used in a bulk write operations.
