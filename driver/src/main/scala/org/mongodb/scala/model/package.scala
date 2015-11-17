@@ -243,6 +243,28 @@ package object model {
   }
 
   /**
+   * The options to apply to an operation that inserts a single document into a collection.
+   *
+   * @note Requires MongoDB 3.2 or greater
+   * @since 1.1
+   */
+  type InsertOneOptions = com.mongodb.client.model.InsertOneOptions
+
+  /**
+   * The options to apply to an operation that inserts a single document into a collection.
+   *
+   * @note Requires MongoDB 3.2 or greater
+   * @since 1.1
+   */
+  object InsertOneOptions {
+
+    /**
+     * Construct a new instance.
+     */
+    def apply(): InsertOneOptions = new com.mongodb.client.model.InsertOneOptions()
+  }
+
+  /**
    * A model describing an insert of a single document.
    *
    * @tparam TResult the type of document to insert. This can be of any type for which a `Codec` is registered
@@ -360,7 +382,7 @@ package object model {
   /**
    * Validation options for documents being inserted or updated in a collection
    *
-   * @Note Requires MongoDB 3.2 or greater
+   * @note Requires MongoDB 3.2 or greater
    * @since 1.1
    */
   type ValidationOptions = com.mongodb.client.model.ValidationOptions
@@ -368,7 +390,7 @@ package object model {
   /**
    * Validation options for documents being inserted or updated in a collection
    *
-   * @Note Requires MongoDB 3.2 or greater
+   * @note Requires MongoDB 3.2 or greater
    * @since 1.1
    */
   object ValidationOptions {
@@ -466,7 +488,7 @@ package object model {
   /**
    * The options for an unwind aggregation pipeline stage
    *
-   * @Note Requires MongoDB 3.2 or greater
+   * @note Requires MongoDB 3.2 or greater
    * @since 1.1
    */
   type UnwindOptions = com.mongodb.client.model.UnwindOptions
