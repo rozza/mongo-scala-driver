@@ -10,6 +10,8 @@ title = "Changelog"
 
 Changes between released versions
 
+### 1.2.0-SNAPSHOT
+  * Added support for BsonDecimal128 [SCALA-241](https://jira.mongodb.org/browse/SCALA-241)
 
 ### 1.1.1
   * Updated Mongodb Driver Async dependency to [3.2.2](https://jira.mongodb.org/browse/SCALA-237)

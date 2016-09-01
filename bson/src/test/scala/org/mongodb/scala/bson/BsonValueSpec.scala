@@ -20,6 +20,8 @@ import java.util.Date
 
 import scala.collection.JavaConverters._
 
+import org.bson.BsonDecimal128
+
 import org.scalatest.{FlatSpec, Matchers}
 
 class BsonValueSpec extends FlatSpec with Matchers {
@@ -52,6 +54,15 @@ class BsonValueSpec extends FlatSpec with Matchers {
 
     BsonDateTime(date) should equal(new BsonDateTime(date.getTime))
     BsonDateTime(1000) should equal(new BsonDateTime(1000))
+  }
+
+  "BsonDecimal128 companion" should "create a BsonDecimal128" in {
+    val expected = new BsonDecimal128(new Decimal128(100))
+
+    BsonDecimal128(100) should equal(expected)
+    BsonDecimal128("100") should equal(expected)
+    BsonDecimal128(BigDecimal(100)) should equal(expected)
+    BsonDecimal128(new Decimal128(100)) should equal(expected)
   }
 
   "BsonDocument companion" should "create a BsonDocument" in {
