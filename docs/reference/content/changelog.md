@@ -10,6 +10,8 @@ title = "Changelog"
 
 Changes between released versions
 
+### 1.2.0-SNAPSHOT
+  * Added support for ReadConcern.LINEARIZABLE [SCALA-247](https://jira.mongodb.org/browse/SCALA-247)
 
 ### 1.1.1
   * Updated Mongodb Driver Async dependency to [3.2.2](https://jira.mongodb.org/browse/SCALA-237)
