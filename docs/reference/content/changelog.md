@@ -10,6 +10,8 @@ title = "Changelog"
 
 Changes between released versions
 
+### 1.2.0-SNAPSHOT
+  * Fixed bug where some connection string options were not applied [SCALA-253](https://jira.mongodb.org/browse/SCALA-253)
 
 ### 1.1.1
   * Updated Mongodb Driver Async dependency to [3.2.2](https://jira.mongodb.org/browse/SCALA-237)
