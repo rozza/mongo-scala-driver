@@ -1,11 +1,11 @@
 /*
- * Copyright 2015 MongoDB, Inc.
+ * Copyright 2016 MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,15 +14,12 @@
  * limitations under the License.
  */
 
-package org.mongodb.scala.connection
-
-import com.mongodb.connection.netty.{ NettyStreamFactoryFactory => JNettyStreamFactoryFactory }
+package org.mongodb.scala.gridfs
 
 /**
- * A `StreamFactoryFactory` implementation for <a href='http://netty.io/'>Netty</a>-based streams.
- *
- * @since 1.0
+ * Contains helper classes to create [[org.mongodb.scala.gridfs.AsyncInputStream]] or [[org.mongodb.scala.gridfs.AsyncOutputStream]]
+ * instances from external sources.
  */
-object NettyStreamFactoryFactory {
-  def apply(): StreamFactoryFactory = JNettyStreamFactoryFactory.builder().build()
+package object helpers {
+
 }
