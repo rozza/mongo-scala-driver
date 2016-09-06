@@ -25,10 +25,10 @@ import org.scalatest.{ FlatSpec, Matchers }
 
 class CollationAlternateSpec extends FlatSpec with Matchers {
 
-  "CollationAlternate" should "have the same static fields as the wrapped CollationAlternative" in {
-    val collationAlternativeClass: Class[CollationAlternate] = classOf[com.mongodb.client.model.CollationAlternate]
-    val wrappedFields = collationAlternativeClass.getDeclaredFields.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
-    val wrappedMethods = collationAlternativeClass.getDeclaredMethods.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
+  "CollationAlternate" should "have the same static fields as the wrapped CollationAlternate" in {
+    val collationAlternateClass: Class[CollationAlternate] = classOf[com.mongodb.client.model.CollationAlternate]
+    val wrappedFields = collationAlternateClass.getDeclaredFields.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
+    val wrappedMethods = collationAlternateClass.getDeclaredMethods.filter(f => isStatic(f.getModifiers)).map(_.getName).toSet
     val exclusions = Set("$VALUES", "valueOf", "values")
 
     val wrapped = (wrappedFields ++ wrappedMethods) -- exclusions
@@ -37,24 +37,24 @@ class CollationAlternateSpec extends FlatSpec with Matchers {
     local should equal(wrapped)
   }
 
-  it should "return the expected CollationAlternatives" in {
-    forAll(collationAlternativeActions) { (stringValue: String, expectedValue: Try[CollationAlternate]) =>
-      CollationAlternate.fromString(stringValue) should equal(expectedValue)
+  it should "return the expected CollationAlternate" in {
+    forAll(collationAlternates) { (value: String, expectedValue: Try[CollationAlternate]) =>
+      CollationAlternate.fromString(value) should equal(expectedValue)
     }
   }
 
-  it should "handle invalid strings" in {
-    forAll(invalidCollationAlternatives) { (stringValue: String) =>
-      CollationAlternate.fromString(stringValue) should be a 'failure
+  it should "handle invalid values" in {
+    forAll(invalidCollationAlternates) { (value: String) =>
+      CollationAlternate.fromString(value) should be a 'failure
     }
   }
 
-  val collationAlternativeActions =
+  val collationAlternates =
     Table(
       ("stringValue", "JavaValue"),
       ("non-ignorable", Success(CollationAlternate.NON_IGNORABLE)),
       ("shifted", Success(CollationAlternate.SHIFTED))
     )
 
-  val invalidCollationAlternatives = Table("invalid strings", "NON_IGNORABLE", "SHIFTED")
+  val invalidCollationAlternates = Table("invalid values", "NON_IGNORABLE", "SHIFTED")
 }

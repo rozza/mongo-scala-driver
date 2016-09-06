@@ -37,24 +37,24 @@ class CollationMaxVariableSpec extends FlatSpec with Matchers {
     local should equal(wrapped)
   }
 
-  it should "return the expected CollationMaxVariables" in {
-    forAll(collationMaxVariableActions) { (stringValue: String, expectedValue: Try[CollationMaxVariable]) =>
-      CollationMaxVariable.fromString(stringValue) should equal(expectedValue)
+  it should "return the expected CollationMaxVariable" in {
+    forAll(collationMaxVariables) { (value: String, expectedValue: Try[CollationMaxVariable]) =>
+      CollationMaxVariable.fromString(value) should equal(expectedValue)
     }
   }
 
-  it should "handle invalid strings" in {
-    forAll(invalidCollationMaxVariables) { (stringValue: String) =>
-      CollationMaxVariable.fromString(stringValue) should be a 'failure
+  it should "handle invalid values" in {
+    forAll(invalidCollationMaxVariables) { (value: String) =>
+      CollationMaxVariable.fromString(value) should be a 'failure
     }
   }
 
-  val collationMaxVariableActions =
+  val collationMaxVariables =
     Table(
       ("stringValue", "JavaValue"),
       ("punct", Success(CollationMaxVariable.PUNCT)),
       ("space", Success(CollationMaxVariable.SPACE))
     )
 
-  val invalidCollationMaxVariables = Table("invalid strings", "SPACE", "PUNCT")
+  val invalidCollationMaxVariables = Table("invalid values", "SPACE", "PUNCT")
 }

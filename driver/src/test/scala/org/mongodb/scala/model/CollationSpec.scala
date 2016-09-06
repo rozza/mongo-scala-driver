@@ -19,6 +19,13 @@ package org.mongodb.scala.model
 import java.lang.reflect.Modifier.isStatic
 
 import org.scalatest.{ FlatSpec, Matchers }
+import com.mongodb.client.model.{
+  Collation => JCollation,
+  CollationAlternate => JCollationAlternate,
+  CollationCaseFirst => JCollationCaseFirst,
+  CollationMaxVariable => JCollationMaxVariable,
+  CollationStrength => JCollationStrength
+}
 
 class CollationSpec extends FlatSpec with Matchers {
 
@@ -36,6 +43,34 @@ class CollationSpec extends FlatSpec with Matchers {
 
   it should "return the underlying builder" in {
     Collation.builder().getClass should equal(classOf[com.mongodb.client.model.Collation.Builder])
+  }
+
+  it should "produce the same collation value when using the Scala helpers" in {
+    val viaScalaHelper = Collation.builder()
+      .backwards(true)
+      .caseLevel(true)
+      .collationAlternate(CollationAlternate.NON_IGNORABLE)
+      .collationCaseFirst(CollationCaseFirst.UPPER)
+      .collationMaxVariable(CollationMaxVariable.SPACE)
+      .collationStrength(CollationStrength.TERTIARY)
+      .locale("fr")
+      .normalization(true)
+      .numericOrdering(true)
+      .build()
+
+    val javaNative = JCollation.builder()
+      .backwards(true)
+      .caseLevel(true)
+      .collationAlternate(JCollationAlternate.NON_IGNORABLE)
+      .collationCaseFirst(JCollationCaseFirst.UPPER)
+      .collationMaxVariable(JCollationMaxVariable.SPACE)
+      .collationStrength(JCollationStrength.TERTIARY)
+      .locale("fr")
+      .normalization(true)
+      .numericOrdering(true)
+      .build()
+
+    viaScalaHelper should equal(javaNative)
   }
 
 }

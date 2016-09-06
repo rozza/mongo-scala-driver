@@ -68,6 +68,14 @@ package object model {
    */
   type CollationMaxVariable = com.mongodb.client.model.CollationMaxVariable
   /**
+   * The collation configuration of how character cases are handled
+   */
+  type CollationCaseFirst = com.mongodb.client.model.CollationCaseFirst
+  /**
+   * The collation configuration of how differences between characters are handled.
+   */
+  type CollationStrength = com.mongodb.client.model.CollationStrength
+  /**
    * The options to apply to a count operation.
    */
   type CountOptions = com.mongodb.client.model.CountOptions
