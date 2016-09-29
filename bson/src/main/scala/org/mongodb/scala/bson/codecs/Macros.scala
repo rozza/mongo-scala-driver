@@ -36,7 +36,7 @@ object Macros {
    * @return the Codec for the Case Class
    */
   @compileTimeOnly("Creating a codec utilises Macros and must be run at compile time.")
-  def createCodec[T](): Codec[T] = macro MacroImpl.createCodecImplNoArgs[T]
+  def createDocCodec[T](): Codec[T] = macro MacroDocumentImpl.createCodecImplNoArgs[T]
 
   /**
    * Creates a Codec for a Case Class
@@ -46,6 +46,25 @@ object Macros {
    * @return the Codec for the Case Class
    */
   @compileTimeOnly("Creating a codec utilises Macros and must be run at compile time.")
-  def createCodec[T](codecRegistry: CodecRegistry): Codec[T] = macro MacroImpl.createCodecImpl[T]
+  def createDocCodec[T](codecRegistry: CodecRegistry): Codec[T] = macro MacroDocumentImpl.createCodecImpl[T]
+
+  /**
+   * Creates a Codec for a Case Class
+   *
+   * @tparam T the Case Class to create a Codec from
+   * @return the Codec for the Case Class
+   */
+  @compileTimeOnly("Creating a codec utilises Macros and must be run at compile time.")
+  def createMapCodec[T](): Codec[T] = macro MacroMapImpl.createCodecImplNoArgs[T]
+
+  /**
+   * Creates a Codec for a Case Class
+   *
+   * @param codecRegistry the Codec Registry to use
+   * @tparam T the Case Class to create a codec from
+   * @return the Codec for the Case Class
+   */
+  @compileTimeOnly("Creating a codec utilises Macros and must be run at compile time.")
+  def createMapCodec[T](codecRegistry: CodecRegistry): Codec[T] = macro MacroMapImpl.createCodecImpl[T]
 
 }

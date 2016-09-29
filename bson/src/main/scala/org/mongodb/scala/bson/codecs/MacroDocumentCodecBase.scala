@@ -20,7 +20,7 @@ import org.bson.codecs.configuration.CodecRegistry
 import org.bson.codecs.{ Codec, DecoderContext, EncoderContext }
 import org.bson.{ BsonReader, BsonWriter, Document }
 
-trait MacroCodecBase[T] extends Codec[T] {
+trait MacroDocumentCodecBase[T] extends Codec[T] {
   val codecRegistry: CodecRegistry
 
   lazy val documentCodec = codecRegistry.get(classOf[org.bson.Document])

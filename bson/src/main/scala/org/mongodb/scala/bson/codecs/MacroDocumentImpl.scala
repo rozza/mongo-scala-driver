@@ -23,7 +23,7 @@ import scala.reflect.macros.whitebox
 import org.bson.codecs.Codec
 import org.bson.codecs.configuration.CodecRegistry
 
-private object MacroImpl {
+private object MacroDocumentImpl {
 
   /**
    * Internal create codec implementation.
@@ -292,8 +292,8 @@ private object MacroImpl {
 
     c.Expr[Codec[T]](
       q"""
-            import org.mongodb.scala.bson.codecs.MacroCodecBase
-            new MacroCodecBase[$classTypeName] {
+            import org.mongodb.scala.bson.codecs.MacroDocumentCodecBase
+            new MacroDocumentCodecBase[$classTypeName] {
               import org.mongodb.scala.bson.codecs.MacroHelpers._
               import org.bson.codecs.configuration.CodecConfigurationException
               import org.bson.codecs.configuration.CodecRegistries._

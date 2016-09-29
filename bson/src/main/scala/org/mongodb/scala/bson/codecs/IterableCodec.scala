@@ -90,6 +90,7 @@ case class IterableCodec(registry: CodecRegistry, bsonTypeClassMap: BsonTypeClas
 
   private def readValue(reader: BsonReader, decoderContext: DecoderContext): Any = {
     reader.getCurrentBsonType match {
+      case null => readMap(reader, decoderContext) // scalastyle:ignore
       case BsonType.NULL =>
         reader.readNull()
         null // scalastyle:ignore
