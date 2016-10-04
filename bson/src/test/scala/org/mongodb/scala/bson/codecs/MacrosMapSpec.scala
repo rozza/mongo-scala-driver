@@ -66,10 +66,17 @@ class MacrosMapSpec extends FlatSpec with Matchers {
     roundTrip(Person("Bob", "Jones"), Macros.createMapCodec[Person]())
     roundTrip(DefaultValue(name = "Bob"), Macros.createMapCodec[DefaultValue]())
     roundTrip(SeqOfStrings("Bob", Seq("scala", "jvm")), Macros.createMapCodec[SeqOfStrings]())
-    roundTrip(RecursiveSeq("Bob", Seq(RecursiveSeq("Charlie", Seq.empty))), Macros.createMapCodec[RecursiveSeq]())
     roundTrip(MapOfStrings("Bob", Map("brother" -> "Tom Jones")), Macros.createMapCodec[MapOfStrings]())
     roundTrip(SeqOfMapOfStrings("Bob", Seq(Map("brother" -> "Tom Jones"))), Macros.createMapCodec[SeqOfMapOfStrings]())
+    roundTrip(RecursiveSeq("Bob", Seq(RecursiveSeq("Charlie", Seq.empty))), Macros.createMapCodec[RecursiveSeq]())
   }
+
+//  it should "be able to round trip nested case classes" in {
+//    roundTrip(ContainsCaseClass("Bob", Person("Charlie", "Jones")), Macros.createDocCodec[ContainsCaseClass]())
+//    roundTrip(ContainsSeqCaseClass("Bob", Seq(Person("Charlie", "Jones"))), Macros.createDocCodec[ContainsSeqCaseClass]())
+//    roundTrip(ContainsNestedSeqCaseClass("Bob", Seq(Seq(Person("Charlie", "Jones")))), Macros.createDocCodec[ContainsNestedSeqCaseClass]())
+//  }
+
 
   def roundTrip[T](value: T, codec: Codec[T]): Unit = {
     decode(codec, encode(codec, value)) should equal(value)

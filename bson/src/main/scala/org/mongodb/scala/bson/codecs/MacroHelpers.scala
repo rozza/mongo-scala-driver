@@ -17,7 +17,10 @@
 package org.mongodb.scala.bson.codecs
 
 import scala.collection.JavaConverters._
-import org.bson.Document
+
+import org.bson.{ Document => JDocument }
+
+import org.mongodb.scala.bson.{ BsonArray, Document }
 
 object MacroHelpers {
 
@@ -34,24 +37,24 @@ object MacroHelpers {
   def toScala(x: Any): Any = {
     x match {
       case y: java.lang.Iterable[_] => y.asScala.map(toScala)
-      case d: Document => d
+      case d: JDocument => d
       case x: java.util.Map[_, _] => x.asScala.toMap
       case _ => x
     }
   }
 
-  def toOption[T](value: Document, converter: Document => T): Option[T] = Option(value).map(converter)
+  def toOption[T](value: JDocument, converter: JDocument => T): Option[T] = Option(value).map(converter)
 
-  def nestedToJava[T](x: Iterable[_], depth: Int, converter: T => Document): Any = {
+  def nestedToJava[T](x: Iterable[_], depth: Int, converter: T => JDocument): Any = {
     depth match {
       case 0 => x.map({ y => converter(y.asInstanceOf[T]) }).asJava
       case _ => x.map({ y => nestedToJava(y.asInstanceOf[Iterable[_]], depth - 1, converter) }).asJava
     }
   }
 
-  def nestedJavaToScala[T](x: java.util.List[_], depth: Int, converter: Document => T): Iterable[Any] = {
+  def nestedJavaToScala[T](x: java.util.List[_], depth: Int, converter: JDocument => T): Iterable[Any] = {
     depth match {
-      case 0 => x.asScala.map(y => converter(y.asInstanceOf[Document]))
+      case 0 => x.asScala.map(y => converter(y.asInstanceOf[JDocument]))
       case _ => x.asScala.map(y => nestedJavaToScala(y.asInstanceOf[java.util.List[_]], depth - 1, converter))
     }
   }

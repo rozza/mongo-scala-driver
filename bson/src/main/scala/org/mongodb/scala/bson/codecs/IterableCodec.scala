@@ -31,6 +31,8 @@ import org.bson.codecs.configuration.CodecRegistry
  */
 object IterableCodec {
 
+  def apply(registry: CodecRegistry): IterableCodec = apply(registry, BsonTypeClassMap())
+
   def apply(registry: CodecRegistry, bsonTypeClassMap: BsonTypeClassMap): IterableCodec = apply(registry, bsonTypeClassMap, None)
 
   def apply(registry: CodecRegistry, bsonTypeClassMap: BsonTypeClassMap, valueTransformer: Option[Transformer]): IterableCodec = {
