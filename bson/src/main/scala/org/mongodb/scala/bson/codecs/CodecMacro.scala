@@ -21,13 +21,13 @@ import scala.reflect.macros.whitebox
 import org.bson.codecs.Codec
 import org.bson.codecs.configuration.CodecRegistry
 
-object MacroImpl {
+object CodecMacro {
   /**
    * Internal create codec implementation.
    */
-  def createCodecImplNoArgs[T: c.WeakTypeTag](c: whitebox.Context)(): c.Expr[Codec[T]] = {
+  def createCodecNoArgs[T: c.WeakTypeTag](c: whitebox.Context)(): c.Expr[Codec[T]] = {
     import c.universe._
-    createCodecImpl[T](c)(c.Expr[CodecRegistry](
+    createCodec[T](c)(c.Expr[CodecRegistry](
       q"""
          import org.mongodb.scala.bson.codecs.DEFAULT_CODEC_REGISTRY
          DEFAULT_CODEC_REGISTRY
@@ -35,8 +35,8 @@ object MacroImpl {
     )).asInstanceOf[c.Expr[Codec[T]]]
   }
 
-  // scalastyle:off method.length cyclomatic.complexity
-  def createCodecImpl[T: c.WeakTypeTag](c: whitebox.Context)(codecRegistry: c.Expr[CodecRegistry]): c.Expr[Codec[T]] = {
+  // scalastyle:off method.length
+  def createCodec[T: c.WeakTypeTag](c: whitebox.Context)(codecRegistry: c.Expr[CodecRegistry]): c.Expr[Codec[T]] = {
     import c.universe._
 
     // Declared types
@@ -44,6 +44,7 @@ object MacroImpl {
 
     // Names
     val classTypeName = mainType.typeSymbol.name.toTypeName
+    val caseClassName = TypeName(s"${classTypeName}MacroCodec")
 
     // Type checkers
     def keyName(t: TermName): Literal = Literal(Constant(t.toString))
@@ -81,9 +82,9 @@ object MacroImpl {
       val setFieldClasses = fields.map({
         case (f, name) =>
           val key = keyName(name)
-          val clazz = f.typeSymbol
-          q"map += ($key -> classOf[$clazz])"
+          q"map += ($key -> classOf[${f.finalResultType}])"
       })
+
       q"""
           val map = Map[String, Class[_]]()
           ..$setFieldClasses
@@ -91,16 +92,38 @@ object MacroImpl {
         """
     }
 
+    def createFieldTypeArgsMap = {
+      val setTypeArgs = fields.map({
+        case (f, name) =>
+          val key = keyName(name)
+          val clazz = f.typeSymbol
+          q"""typeArgs += ($key -> {
+                    val tpeArgs = ListBuffer.empty[Class[_]]
+                    ..${f.typeArgs.map(x => q"tpeArgs += classOf[${x.finalResultType}]")}
+                    tpeArgs.toList
+                  })"""
+      })
+
+      q"""
+          val typeArgs = Map[String, List[Class[_]]]()
+          ..$setTypeArgs
+         typeArgs.toMap
+        """
+    }
+
     c.Expr[Codec[T]](
       q"""
+         import scala.collection.JavaConverters._
          import org.bson.{BsonReader, BsonType, BsonValue, BsonWriter}
-         import org.bson.codecs.configuration.CodecRegistry
+         import org.bson.codecs.configuration.{ CodecRegistry, CodecRegistries }
          import org.bson.codecs.{ Encoder, Codec, DecoderContext, EncoderContext }
          import scala.collection.mutable.Map
+         import scala.collection.mutable.ListBuffer
 
-         new Codec[$classTypeName] {
-           val registry = $codecRegistry
-           val fieldClassMap = $createFieldClassMap
+         case class $caseClassName(codecRegistry: CodecRegistry) extends Codec[$classTypeName] {
+           private val fieldClassMap = $createFieldClassMap
+           private val fieldTypeArgsMap = $createFieldTypeArgsMap
+           private val registry = CodecRegistries.fromRegistries(List(codecRegistry, CodecRegistries.fromCodecs(this)).asJava)
 
            override def encode(writer: BsonWriter, value: $classTypeName, encoderContext: EncoderContext): Unit =
               writeValue(writer, value, encoderContext)
@@ -111,9 +134,11 @@ object MacroImpl {
                while (reader.readBsonType ne BsonType.END_OF_DOCUMENT) {
                   val name = reader.readName
                   val clazz = fieldClassMap.getOrElse(name, classOf[BsonValue])
-                  map += (name -> readValue(reader, decoderContext, clazz))
+                  val typeArgs = fieldTypeArgsMap.getOrElse(name, List.empty[Class[_]])
+                  map += (name -> readValue(reader, decoderContext, clazz, typeArgs))
               }
               reader.readEndDocument()
+
               $getInstance
            }
 
@@ -128,11 +153,15 @@ object MacroImpl {
              }
            }
 
-           private def readValue[T](reader: BsonReader, decoderContext: DecoderContext, clazz: Class[T]): T =
+           private def readValue[T](reader: BsonReader, decoderContext: DecoderContext, clazz: Class[T], typeArgs: List[Class[_]]): T = {
               registry.get(clazz).decode(reader, decoderContext)
+           }
 
         }
+
+       ${caseClassName.toTermName}($codecRegistry).asInstanceOf[Codec[$mainType]]
        """
     )
   }
+  // scalastyle:on method.length
 }

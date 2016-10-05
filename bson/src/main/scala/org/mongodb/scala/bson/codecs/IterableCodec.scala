@@ -106,6 +106,7 @@ case class IterableCodec(registry: CodecRegistry, bsonTypeClassMap: BsonTypeClas
 
   private def readMap(reader: BsonReader, decoderContext: DecoderContext): Map[String, _] = {
     val map = mutable.Map[String, Any]()
+    reader.getCurrentName
     reader.readStartDocument()
     while (reader.readBsonType ne BsonType.END_OF_DOCUMENT) {
       map += (reader.readName -> readValue(reader, decoderContext))

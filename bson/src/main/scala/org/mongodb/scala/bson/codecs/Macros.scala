@@ -20,7 +20,7 @@ import scala.annotation.compileTimeOnly
 import scala.language.experimental.macros
 
 import org.bson.codecs.Codec
-import org.bson.codecs.configuration.CodecRegistry
+import org.bson.codecs.configuration.{ CodecProvider, CodecRegistry }
 
 /**
  * Macro based Codecs
@@ -73,8 +73,8 @@ object Macros {
    * @tparam T the Case Class to create a Codec from
    * @return the Codec for the Case Class
    */
-  @compileTimeOnly("Creating a codec utilises Macros and must be run at compile time.")
-  def createCodec[T](): Codec[T] = macro MacroImpl.createCodecImplNoArgs[T]
+  @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
+  def createCodec[T](): Codec[T] = macro CodecMacro.createCodecNoArgs[T]
 
   /**
    * Creates a Codec for a Case Class
@@ -83,6 +83,16 @@ object Macros {
    * @tparam T the Case Class to create a codec from
    * @return the Codec for the Case Class
    */
-  @compileTimeOnly("Creating a codec utilises Macros and must be run at compile time.")
-  def createCodec[T](codecRegistry: CodecRegistry): Codec[T] = macro MacroImpl.createCodecImpl[T]
+  @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
+  def createCodec[T](codecRegistry: CodecRegistry): Codec[T] = macro CodecMacro.createCodec[T]
+
+  /**
+   * Creates a CodecProvider for a Case Class
+   *
+   * @tparam T the Case Class to create a Codec from
+   * @return the Codec for the Case Class
+   */
+  @compileTimeOnly("Creating a CodecProvider utilises Macros and must be run at compile time.")
+  def createCodecProvider[T](): CodecProvider = macro CodecProviderMacro.createCodecProvider[T]
+
 }
