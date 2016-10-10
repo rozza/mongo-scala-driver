@@ -154,9 +154,33 @@ object CodecMacro {
            }
 
            private def readValue[T](reader: BsonReader, decoderContext: DecoderContext, clazz: Class[T], typeArgs: List[Class[_]]): T = {
-              registry.get(clazz).decode(reader, decoderContext)
+              reader.getCurrentBsonType match {
+                case BsonType.DOCUMENT => readDocument(reader, decoderContext, clazz, typeArgs)
+                case BsonType.ARRAY => readArray(reader, decoderContext, clazz, typeArgs)
+                case _ => registry.get(clazz).decode(reader, decoderContext)
+              }
            }
 
+           private def readArray[T](reader: BsonReader, decoderContext: DecoderContext, clazz: Class[T], typeArgs: List[Class[_]]): T = {
+             reader.readStartArray()
+             val list = ListBuffer[Any]()
+             while (reader.readBsonType ne BsonType.END_OF_DOCUMENT) {
+               list.append(readValue(reader, decoderContext, typeArgs.head, typeArgs.tail))
+             }
+             reader.readEndArray()
+             list.toList.asInstanceOf[T]
+           }
+
+         private def readDocument(reader: BsonReader, decoderContext: DecoderContext, clazz: Class[T], typeArgs: List[Class[_]]): T = {
+           val map = mutable.Map[String, Any]()
+           reader.getCurrentName
+           reader.readStartDocument()
+           while (reader.readBsonType ne BsonType.END_OF_DOCUMENT) {
+             map += (reader.readName -> readValue(reader, decoderContext, typeArgs.head, typeArgs.tail))
+           }
+           reader.readEndDocument()
+           map.toMap.asInstanceOf[T]
+         }
         }
 
        ${caseClassName.toTermName}($codecRegistry).asInstanceOf[Codec[$mainType]]

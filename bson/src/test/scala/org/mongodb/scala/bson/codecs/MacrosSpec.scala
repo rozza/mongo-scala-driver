@@ -18,16 +18,17 @@ package org.mongodb.scala.bson.codecs
 
 import java.nio.ByteBuffer
 
-import scala.collection.JavaConverters._
+import scala.reflect.ClassTag
 
 import org.bson._
 import org.bson.codecs.configuration.CodecRegistries
-import org.bson.codecs.{ Codec, DecoderContext, EncoderContext }
-import org.bson.io.{ BasicOutputBuffer, ByteBufferBsonInput, OutputBuffer }
+import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
+import org.bson.io.{BasicOutputBuffer, ByteBufferBsonInput, OutputBuffer}
 import org.bson.types.ObjectId
 
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.{FlatSpec, Matchers}
 
+//scalastyle:off
 class MacrosSpec extends FlatSpec with Matchers {
 
   case class Empty()
@@ -64,50 +65,47 @@ class MacrosSpec extends FlatSpec with Matchers {
   case class ContainsSeqADT(name: String, trees: Seq[Tree])
   case class ContainsNestedSeqADT(name: String, trees: Seq[Seq[Tree]])
 
-  "Macros.createDocCodec" should "be able to round trip simple case classes" in {
-    roundTrip(Empty(), Macros.createDocCodec[Empty]())
-    roundTrip(Person("Bob", "Jones"), Macros.createDocCodec[Person]())
-    roundTrip(DefaultValue(name = "Bob"), Macros.createDocCodec[DefaultValue]())
-    roundTrip(JavaListOfStrings("Bob", Seq("scala", "jvm").asJava), Macros.createDocCodec[JavaListOfStrings]())
-    roundTrip(SeqOfStrings("Bob", Seq("scala", "jvm")), Macros.createDocCodec[SeqOfStrings]())
-    roundTrip(RecursiveSeq("Bob", Seq(RecursiveSeq("Charlie", Seq.empty))), Macros.createDocCodec[RecursiveSeq]())
-    roundTrip(MapOfStrings("Bob", Map("brother" -> "Tom Jones")), Macros.createDocCodec[MapOfStrings]())
-    roundTrip(SeqOfMapOfStrings("Bob", Seq(Map("brother" -> "Tom Jones"))), Macros.createDocCodec[SeqOfMapOfStrings]())
+  "Macros" should "be able to round trip simple case classes" in {
+    roundTrip(Empty(), classOf[Empty])
+    roundTrip(Person("Bob", "Jones"), classOf[Person])
+    roundTrip(DefaultValue(name = "Bob"), classOf[DefaultValue])
+    roundTrip(SeqOfStrings("Bob", Seq("scala", "jvm")), classOf[SeqOfStrings])
+    roundTrip(RecursiveSeq("Bob", Seq(RecursiveSeq("Charlie", Seq.empty))), classOf[RecursiveSeq])
+    roundTrip(MapOfStrings("Bob", Map("brother" -> "Tom Jones")), classOf[MapOfStrings])
+    roundTrip(SeqOfMapOfStrings("Bob", Seq(Map("brother" -> "Tom Jones"))), classOf[SeqOfMapOfStrings])
   }
 
   it should "be able to round trip nested case classes" in {
-    roundTrip(ContainsCaseClass("Bob", Person("Charlie", "Jones")), Macros.createDocCodec[ContainsCaseClass]())
-    roundTrip(ContainsSeqCaseClass("Bob", Seq(Person("Charlie", "Jones"))), Macros.createDocCodec[ContainsSeqCaseClass]())
-    roundTrip(ContainsNestedSeqCaseClass("Bob", Seq(Seq(Person("Charlie", "Jones")))), Macros.createDocCodec[ContainsNestedSeqCaseClass]())
+    roundTrip(ContainsCaseClass("Bob", Person("Charlie", "Jones")), classOf[ContainsCaseClass], classOf[Person])
+    roundTrip(ContainsSeqCaseClass("Bob", Seq(Person("Charlie", "Jones"))), classOf[ContainsSeqCaseClass], classOf[Person])
+    roundTrip(ContainsNestedSeqCaseClass("Bob", Seq(Seq(Person("Charlie", "Jones")))), classOf[ContainsNestedSeqCaseClass], classOf[Person])
   }
 
   it should "be able to round trip nested case classes in maps with help" in {
-    val registry = CodecRegistries.fromRegistries(CodecRegistries.fromCodecs(Macros.createDocCodec[Person]()), DEFAULT_CODEC_REGISTRY)
-    roundTrip(ContainsMapOfCaseClasses("Bob", Map("mother" -> Person("Charli", "Jones"))), Macros.createDocCodec[ContainsMapOfCaseClasses]())
-    roundTrip(
-      ContainsMapOfMapOfCaseClasses("Bob", Map("maternal" -> Map("mother" -> Person("Charli", "Jones")))),
-      Macros.createDocCodec[ContainsMapOfMapOfCaseClasses]()
+    roundTrip(ContainsMapOfCaseClasses("Bob", Map("mother" -> Person("Charli", "Jones"))), classOf[ContainsMapOfCaseClasses], classOf[Person])
+    roundTrip(ContainsMapOfMapOfCaseClasses("Bob", Map("maternal" -> Map("mother" -> Person("Charli", "Jones")))),
+      classOf[ContainsMapOfMapOfCaseClasses], classOf[Person]
     )
   }
 
   it should "be able to round trip optional values" in {
-    roundTrip(OptionalValue("Bob", None), Macros.createDocCodec[OptionalValue]())
-    roundTrip(OptionalValue("Bob", Some("value")), Macros.createDocCodec[OptionalValue]())
+    roundTrip(OptionalValue("Bob", None), classOf[OptionalValue])
+    roundTrip(OptionalValue("Bob", Some("value")), classOf[OptionalValue])
 
-    roundTrip(OptionalCaseClass("Bob", None), Macros.createDocCodec[OptionalCaseClass]())
-    roundTrip(OptionalCaseClass("Bob", Some(Person("Charlie", "Jones"))), Macros.createDocCodec[OptionalCaseClass]())
+    roundTrip(OptionalCaseClass("Bob", None), classOf[OptionalCaseClass])
+    roundTrip(OptionalCaseClass("Bob", Some(Person("Charlie", "Jones"))), classOf[OptionalCaseClass])
 
-    roundTrip(OptionalRecursive("Bob", None), Macros.createDocCodec[OptionalRecursive]())
-    roundTrip(OptionalRecursive("Bob", Some(OptionalRecursive("Charlie", None))), Macros.createDocCodec[OptionalRecursive]())
+    roundTrip(OptionalRecursive("Bob", None), classOf[OptionalRecursive])
+    roundTrip(OptionalRecursive("Bob", Some(OptionalRecursive("Charlie", None))), classOf[OptionalRecursive])
   }
 
   it should "be able to round trip tuples" in {
-    roundTrip(PlainTuple(("Bob", "Jones")), Macros.createDocCodec[PlainTuple]())
-    roundTrip(TupleWithIterable(("Bob", Seq(2, 2))), Macros.createDocCodec[TupleWithIterable]())
-    roundTrip(NestedTuple(("Bobby", PlainTuple(("Charlie", "Jones")))), Macros.createDocCodec[NestedTuple]())
+    roundTrip(PlainTuple(("Bob", "Jones")), classOf[PlainTuple])
+    roundTrip(TupleWithIterable(("Bob", Seq(2, 2))), classOf[TupleWithIterable])
+    roundTrip(NestedTuple(("Bobby", PlainTuple(("Charlie", "Jones")))), classOf[NestedTuple], classOf[PlainTuple])
     roundTrip(
       NestedTupleWithIterable(("Bobby", Seq(PlainTuple(("Charlie", "Jones")), PlainTuple(("Tom", "Jones"))))),
-      Macros.createDocCodec[NestedTupleWithIterable]()
+      classOf[NestedTupleWithIterable], classOf[PlainTuple]
     )
   }
 
@@ -115,19 +113,24 @@ class MacrosSpec extends FlatSpec with Matchers {
     val branch = Branch(Branch(Leaf(1), Leaf(2), 3), Branch(Leaf(4), Leaf(5), 6), 3) // scalastyle:ignore
     val leaf = Leaf(1)
 
-    roundTrip(branch, Macros.createDocCodec[Tree]())
-    roundTrip(leaf, Macros.createDocCodec[Tree]())
+    roundTrip(branch, classOf[Tree])
+    roundTrip(leaf, classOf[Tree])
 
-    roundTrip(ContainsADT("Bob", branch), Macros.createDocCodec[ContainsADT]())
-    roundTrip(ContainsADT("Bob", leaf), Macros.createDocCodec[ContainsADT]())
+    roundTrip(ContainsADT("Bob", branch), classOf[ContainsADT])
+    roundTrip(ContainsADT("Bob", leaf), classOf[ContainsADT])
 
-    roundTrip(ContainsSeqADT("Bob", List(branch, leaf)), Macros.createDocCodec[ContainsSeqADT]())
-    roundTrip(ContainsNestedSeqADT("Bob", List(List(branch, leaf))), Macros.createDocCodec[ContainsNestedSeqADT]())
+    roundTrip(ContainsSeqADT("Bob", List(branch, leaf)), classOf[ContainsSeqADT])
+    roundTrip(ContainsNestedSeqADT("Bob", List(List(branch, leaf))), classOf[ContainsNestedSeqADT])
   }
 
-  def roundTrip[T](value: T, codec: Codec[T]): Unit = {
+  def roundTrip[T](value: T, clazz: Class[T], clazzes: Class[_]*)(implicit ct: ClassTag[T]): Unit = {
+    val provider = Macros.createCodecProvider1[T]()
+    val registry = CodecRegistries.fromRegistries(CodecRegistries.fromProviders(provider), DEFAULT_CODEC_REGISTRY)
+    val codec = registry.get(clazz)
     decode(codec, encode(codec, value)) should equal(value)
   }
+
+  //def getProvider[T](clazz: Class[T])(implicit ct: ClassTag[T]): CodecProvider = Macros.createCodecProvider[T]()
 
   def encode[T](codec: Codec[T], value: T): OutputBuffer = {
     val buffer = new BasicOutputBuffer()

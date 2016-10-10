@@ -44,7 +44,7 @@ object CodecProviderMacro {
          new CodecProvider {
            @SuppressWarnings(Array("unchecked"))
            def get[C](clazz: Class[C], codecRegistry: CodecRegistry): Codec[C] = {
-              $codec
+              $codec.asInstanceOf[Codec[C]]
            }
          }
        """
