@@ -20,20 +20,30 @@ import scala.reflect.macros.whitebox
 
 import org.bson.codecs.configuration.{ CodecProvider, CodecRegistry }
 
-object CodecProviderMacro {
+private[bson] object CodecProviderMacro {
 
-  // scalastyle:off method.length
+  def createCodecProviderWithClass[T: c.WeakTypeTag](c: whitebox.Context)(clazz: c.Expr[Class[T]]): c.Expr[CodecProvider] =
+    createCodecProvider[T](c)().asInstanceOf[c.Expr[CodecProvider]]
+
   def createCodecProvider[T: c.WeakTypeTag](c: whitebox.Context)(): c.Expr[CodecProvider] = {
     import c.universe._
 
-    // Declared types
+    // Declared type
     val mainType = weakTypeOf[T]
 
-    // Names
-    val classTypeName = mainType.typeSymbol.name.toTypeName
+    // Helpers
+    def isOption(t: Type): Boolean = t.typeSymbol == definitions.OptionClass
+    def isSealed(t: Type): Boolean = !isOption(t) && t.typeSymbol.isClass && t.typeSymbol.asClass.isSealed
 
+    // Names
     def exprCodecRegistry = c.Expr[CodecRegistry](q"codecRegistry")
-    def codec = CodecMacro.createCodec[T](c)(exprCodecRegistry)
+    def codec = {
+      if (isSealed(mainType)) {
+        CodecMacro.createCodec[T](c)(exprCodecRegistry)
+      } else {
+        CodecMacro.createCodec[T](c)(exprCodecRegistry)
+      }
+    }
 
     c.Expr[CodecProvider](
       q"""
@@ -44,11 +54,14 @@ object CodecProviderMacro {
          new CodecProvider {
            @SuppressWarnings(Array("unchecked"))
            def get[C](clazz: Class[C], codecRegistry: CodecRegistry): Codec[C] = {
-              $codec.asInstanceOf[Codec[C]]
+              if (classOf[$mainType].isAssignableFrom(clazz)) {
+                $codec.asInstanceOf[Codec[C]]
+              } else {
+                null
+              }
            }
          }
        """
     )
   }
-  // scalastyle:on method.length
 }

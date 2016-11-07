@@ -22,7 +22,7 @@ import scala.reflect.macros.whitebox
 import org.bson.codecs.Codec
 import org.bson.codecs.configuration.CodecRegistry
 
-object CodecMacro {
+object SealedClassCodecMacro {
   /**
    * Internal create codec implementation.
    */
@@ -45,17 +45,23 @@ object CodecMacro {
     val mapType = typeOf[MapLike[_, _, _]].typeSymbol
 
     // Names
-    val classTypeName = mainType.typeSymbol.name.toTypeName
-    val caseClassName = TypeName(s"${classTypeName}MacroCodec")
+    val baseClassTypeName = weakTypeOf[T].typeSymbol.name.toTypeName
+    val caseClassName = TypeName(s"${baseClassTypeName}SealedMacroCodec")
+    val classFieldName = "_cls"
 
     // Type checkers
-    def keyName(t: TermName): Literal = Literal(Constant(t.toString))
-    def fields: List[(Type, TermName)] = mainType.members.sorted.filter(_.isMethod).map(_.asMethod).filter(_.isGetter)
-      .map(m => (m.returnType.asSeenFrom(mainType, mainType.typeSymbol), m.name))
     def isMap(t: Type): Boolean = t.baseClasses.contains(mapType)
     def isCaseClass(t: Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isCaseClass
     def isOption(t: Type): Boolean = t.typeSymbol == definitions.OptionClass
     def isTuple(t: Type): Boolean = definitions.TupleClass.seq.contains(t.typeSymbol)
+
+    // Helpers
+    def keyName(t: TermName): Literal = Literal(Constant(t.toString))
+    def subClasses(t: Type): List[Type] = t.typeSymbol.asClass.knownDirectSubclasses.map(_.asClass.toType).filter(isCaseClass).toList
+    def typeDecodedName(t: Type): String = t.typeSymbol.asClass.name.decodedName.toString
+    val knownTypes = mainType +: subClasses(mainType)
+    def fields: Map[Type, List[(Type, TermName)]] = knownTypes.map(t => (t, t.members.sorted.filter(_.isMethod).map(_.asMethod).filter(_.isGetter)
+      .map(m => (m.returnType.asSeenFrom(t, t.typeSymbol), m.name)))).toMap
 
     // Primitives type map
     val primitiveTypesMap: Map[Type, Type] = Map(
@@ -69,7 +75,7 @@ object CodecMacro {
       typeOf[Short] -> typeOf[java.lang.Short]
     )
 
-    def writeValue: Tree = {
+    def writeValue(fields: List[(Type, TermName)]): Tree = {
       val writeFields = fields.map({
         case (f, name) =>
           val key = keyName(name)
@@ -92,9 +98,15 @@ object CodecMacro {
       """
     }
 
-    def getInstance = q"new ${mainType.resultType}(..$fieldSetters)"
+    def getInstance(map: Tree) = {
+      val subClassName = q"$map($classFieldName)"
+      val cases = knownTypes.map { st =>
+        cq"${typeDecodedName(st)} => new $st(..${fieldSetters(fields(st))})"
+      } :+ cq"""_ => throw new UnsupportedOperationException("Unexpected class type: " + $subClassName)"""
+      q"map($classFieldName) match { case ..$cases }"
+    }
 
-    def fieldSetters = {
+    def fieldSetters(fields: List[(Type, TermName)]) = {
       fields.map({
         case (f, name) =>
           val key = keyName(name)
@@ -119,20 +131,25 @@ object CodecMacro {
       types.filter(x => !isOption(x)).map(x => primitiveTypesMap.getOrElse(x, x))
     }
 
-    def createFieldTypeArgsMap = {
-      val setTypeArgs = fields.map({
-        case (f, name) =>
-          val key = keyName(name)
-          q"""
-            typeArgs += ($key -> {
-              val tpeArgs = ListBuffer.empty[Class[_]]
-              ..${flattenTypeArgs(f).map(t => q"tpeArgs += classOf[${t.finalResultType}]")}
-              tpeArgs.toList
-            })"""
-      })
+    def getClasses(types: List[Type]) = {
+      val classes = types.map(t => q"classOf[$t]")
+      q"List[Class[_]](...$classes)"
+    }
+
+    def createFieldTypeArgsMap(fieldsTypeAndName: List[(Type, TermName)]) = {
+      val x: List[(c.universe.Literal, List[Type])] = fieldsTypeAndName.map(tn =>
+        (keyName(tn._2), flattenTypeArgs(tn._1)))
+      x.map(kv => q"""(${kv._1} -> ${getClasses(kv._2)})""")
+    }
+
+    def createSealedClassFieldTypeArgsMap = {
+      val setTypeArgs = fields.map(kv =>
+        q"""
+          typeArgs += (${typeDecodedName(kv._1)} -> ${createFieldTypeArgsMap(kv._2)})
+         """)
 
       q"""
-        val typeArgs = Map[String, List[Class[_]]]()
+        val typeArgs = Map[String, Map[String, List[Class[_]]]]()
         ..$setTypeArgs
         typeArgs.toMap
       """
@@ -160,15 +177,40 @@ object CodecMacro {
         import scala.collection.mutable.ListBuffer
         import scala.util.{ Failure, Success, Try }
 
-        case class $caseClassName(codecRegistry: CodecRegistry) extends Codec[$classTypeName] {
-          private val fieldTypeArgsMap = $createFieldTypeArgsMap
+        case class $caseClassName(codecRegistry: CodecRegistry) extends Codec[$baseClassTypeName] {
+          private val fieldTypeArgsMap = $createSealedClassFieldTypeArgsMap
           private val clazzToCaseClassMap = $createClazzToCaseClassMap
           private val registry = CodecRegistries.fromRegistries(List(codecRegistry, CodecRegistries.fromCodecs(this)).asJava)
 
-          override def encode(writer: BsonWriter, value: $classTypeName, encoderContext: EncoderContext): Unit =
+          override def encode(writer: BsonWriter, value: $baseClassTypeName, encoderContext: EncoderContext): Unit =
              writeValue(writer, value, encoderContext)
 
-          override def decode(reader: BsonReader, decoderContext: DecoderContext): $classTypeName = {
+          override def decode(reader: BsonReader, decoderContext: DecoderContext): $baseClassTypeName = {
+
+            // Find the class name
+            reader.mark()
+            reader.readStartDocument()
+            var className: Option[String] = None
+            while (!className.isDefined && reader.readBsonType ne BsonType.END_OF_DOCUMENT) {
+              val name = reader.readName
+              if (name == $classFieldName) {
+                className = Some(readValue(reader, decoderContext, classOf[String], List()))
+              } else {
+                reader.skipValue
+              }
+            }
+            reader.reset()
+
+            // Validate the class name
+            // TODO BETTER ERROR MESSAGES
+            if (className.isEmpty) {
+              throw new CodecConfigurationException("Could not decode sealed class. Missing 'classFieldName' field.")
+            } else if (!fieldTypeArgsMap.contains(className)) {
+              throw new CodecConfigurationException(s"Could not decode sealed class, unknown class $$className.")
+            }
+
+            // Decode
+            val fieldTypeArgs = fieldTypeArgsMap(className)
             val map = Map[String, Any]()
             reader.readStartDocument()
              while (reader.readBsonType ne BsonType.END_OF_DOCUMENT) {
@@ -179,14 +221,14 @@ object CodecMacro {
             }
             reader.readEndDocument()
 
-            $getInstance
+            ${getInstance(q"map")}
           }
 
-          override def getEncoderClass: Class[$classTypeName] = classOf[$classTypeName]
+          override def getEncoderClass: Class[$baseClassTypeName] = classOf[$baseClassTypeName]
 
           private def writeValue[V](writer: BsonWriter, value: V, encoderContext: EncoderContext): Unit = {
             value match {
-              case value: $classTypeName => $writeValue
+              case value: $baseClassTypeName => ${writeValue(fields(mainType))}
               case _ =>
                 val codec = registry.get(value.getClass).asInstanceOf[Encoder[V]]
                 encoderContext.encodeWithChildContext(codec, writer, value)
@@ -237,7 +279,7 @@ object CodecMacro {
         }
         }
 
-       ${caseClassName.toTermName}($codecRegistry).asInstanceOf[Codec[$mainType]]
+       ${caseClassName.toTermName}($codecRegistry).asInstanceOf[Codec[$baseClassTypeName]]
        """
     )
   }

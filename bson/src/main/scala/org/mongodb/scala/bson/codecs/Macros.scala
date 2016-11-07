@@ -17,10 +17,11 @@
 package org.mongodb.scala.bson.codecs
 
 import scala.annotation.compileTimeOnly
+import scala.language.implicitConversions
 import scala.language.experimental.macros
 
 import org.bson.codecs.Codec
-import org.bson.codecs.configuration.{CodecProvider, CodecRegistry}
+import org.bson.codecs.configuration.{ CodecProvider, CodecRegistry }
 
 /**
  * Macro based Codecs
@@ -95,13 +96,6 @@ object Macros {
   @compileTimeOnly("Creating a CodecProvider utilises Macros and must be run at compile time.")
   def createCodecProvider[T](): CodecProvider = macro CodecProviderMacro.createCodecProvider[T]
 
-  /**
-   * Creates a CodecProvider for a Case Class
-   *
-   * @tparam T the Case Class to create a Codec from
-   * @return the Codec for the Case Class
-   */
-  @compileTimeOnly("Creating a CodecProvider utilises Macros and must be run at compile time.")
-  def createCodecProvider1[T](): CodecProvider = macro CodecProviderMacro.createCodecProvider[T]
+  implicit def createCodecProvider[T](clazz: Class[T]): CodecProvider = macro CodecProviderMacro.createCodecProviderWithClass[T]
 
 }
