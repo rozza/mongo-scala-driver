@@ -23,7 +23,7 @@ import scala.language.implicitConversions
 import org.bson.codecs.Codec
 import org.bson.codecs.configuration.{ CodecProvider, CodecRegistry }
 
-import org.mongodb.scala.bson.codecs.macrocodecs.{ CaseClassCodec, CaseClassProvider }
+import org.mongodb.scala.bson.codecs.macrocodecs.{ CaseClassCodec, CaseClassProvider, SealedCaseClassCodec }
 
 /**
  * Macro based Codecs
@@ -41,6 +41,9 @@ object Macros {
   @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
   def createCodec[T](): Codec[T] = macro CaseClassCodec.createCodecNoArgs[T]
 
+  @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
+  def createSealedCodec[T](): Codec[T] = macro SealedCaseClassCodec.createCodecNoArgs[T]
+
   /**
    * Creates a Codec for a Case Class
    *
@@ -50,6 +53,8 @@ object Macros {
    */
   @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
   def createCodec[T](codecRegistry: CodecRegistry): Codec[T] = macro CaseClassCodec.createCodec[T]
+
+  def createCodec[T](clazz: Class[T], codecRegistry: CodecRegistry): Codec[T] = macro CaseClassCodec.createCodecWithClazz[T]
 
   /**
    * Creates a CodecProvider for a Case Class

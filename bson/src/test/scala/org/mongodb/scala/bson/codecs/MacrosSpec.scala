@@ -56,6 +56,14 @@ class MacrosSpec extends FlatSpec with Matchers {
 
   case class PlainTuple(value: (String, String))
 
+  sealed class Tree
+  case class Branch(b1: Tree, b2: Tree, value: Int) extends Tree
+  case class Leaf(value: Int) extends Tree
+
+  case class ContainsADT(name: String, tree: Tree)
+  case class ContainsSeqADT(name: String, trees: Seq[Tree])
+  case class ContainsNestedSeqADT(name: String, trees: Seq[Seq[Tree]])
+
   "Macros" should "be able to round trip simple case classes" in {
     roundTrip(Empty(), classOf[Empty])
     roundTrip(Person("Bob", "Jones"), classOf[Person])
@@ -88,6 +96,11 @@ class MacrosSpec extends FlatSpec with Matchers {
 
     roundTrip(OptionalRecursive("Bob", None), classOf[OptionalRecursive])
     roundTrip(OptionalRecursive("Bob", Some(OptionalRecursive("Charlie", None))), classOf[OptionalRecursive])
+  }
+
+  it should "support ADT sealed case classes" in {
+    val branch = Branch(Branch(Leaf(1), Leaf(2), 3), Branch(Leaf(4), Leaf(5), 6), 3) // scalastyle:ignore
+    roundTrip(branch, classOf[Tree])
   }
 
   it should "not support tuples" in {

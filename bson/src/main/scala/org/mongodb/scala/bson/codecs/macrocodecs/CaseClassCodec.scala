@@ -36,6 +36,10 @@ private[codecs] object CaseClassCodec {
     )).asInstanceOf[c.Expr[Codec[T]]]
   }
 
+  def createCodecWithClazz[T: c.WeakTypeTag](c: whitebox.Context)(clazz: c.Expr[Class[T]], codecRegistry: c.Expr[CodecRegistry]): c.Expr[Codec[T]] = {
+    createCodec[T](c)(codecRegistry).asInstanceOf[c.Expr[Codec[T]]]
+  }
+
   // scalastyle:off method.length
   def createCodec[T: c.WeakTypeTag](c: whitebox.Context)(codecRegistry: c.Expr[CodecRegistry]): c.Expr[Codec[T]] = {
     import c.universe._
@@ -46,8 +50,7 @@ private[codecs] object CaseClassCodec {
     val mapTypeSymbol = typeOf[MapLike[_, _, _]].typeSymbol
 
     // Names
-    val classTypeName = mainType.typeSymbol.name.toTypeName
-    val caseClassName = TypeName(s"${classTypeName}MacroCodec")
+    val codecName = TypeName(s"${mainType}MacroCodec")
 
     // Type checkers
     def keyName(t: TermName): Literal = Literal(Constant(t.toString))
@@ -57,6 +60,7 @@ private[codecs] object CaseClassCodec {
     def isCaseClass(t: Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isCaseClass
     def isOption(t: Type): Boolean = t.typeSymbol == definitions.OptionClass
     def isTuple(t: Type): Boolean = definitions.TupleClass.seq.contains(t.typeSymbol)
+    def isSealed(t: Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isSealed
 
     // Primitives type map
     val primitiveTypesMap: Map[Type, Type] = Map(
@@ -155,14 +159,14 @@ private[codecs] object CaseClassCodec {
           val key = keyName(name)
           q"""
             typeArgs += ($key -> {
-              val tpeArgs = ListBuffer.empty[Class[_]]
+              val tpeArgs = mutable.ListBuffer.empty[Class[_]]
               ..${flattenTypeArgs(f).map(t => q"tpeArgs += classOf[${t.finalResultType}]")}
               tpeArgs.toList
             })"""
       })
 
       q"""
-        val typeArgs = Map[String, List[Class[_]]]()
+        val typeArgs = mutable.Map[String, List[Class[_]]]()
         ..$setTypeArgs
         typeArgs.toMap
       """
@@ -170,11 +174,11 @@ private[codecs] object CaseClassCodec {
 
     def createClazzToCaseClassMap = {
       val setClazzIsCaseClass = fields.map({
-        case (f, name) => q"clazzIsCaseClass ++= ${flattenTypeArgs(f).map(t => q"(classOf[${t.finalResultType}], ${isCaseClass(t)})")}"
+        case (f, name) => q"clazzIsCaseClass ++= ${flattenTypeArgs(f).map(t => q"(classOf[${t.finalResultType}], ${isCaseClass(t)} || ${isSealed(t)})")}"
       })
 
       q"""
-        val clazzIsCaseClass = Map[Class[_], Boolean]()
+        val clazzIsCaseClass = mutable.Map[Class[_], Boolean]()
         ..$setClazzIsCaseClass
         clazzIsCaseClass.toMap
       """
@@ -186,20 +190,19 @@ private[codecs] object CaseClassCodec {
         import org.bson.{BsonReader, BsonType, BsonValue, BsonWriter}
         import org.bson.codecs.configuration.{ CodecRegistry, CodecRegistries }
         import org.bson.codecs.{ Encoder, Codec, DecoderContext, EncoderContext }
-        import scala.collection.mutable.Map
-        import scala.collection.mutable.ListBuffer
+        import scala.collection.mutable
         import scala.util.{ Failure, Success, Try }
 
-        case class $caseClassName(codecRegistry: CodecRegistry) extends Codec[$classTypeName] {
+        case class $codecName(codecRegistry: CodecRegistry) extends Codec[$mainType] {
           private val fieldTypeArgsMap = $createFieldTypeArgsMap
           private val clazzToCaseClassMap = $createClazzToCaseClassMap
           private val registry = CodecRegistries.fromRegistries(List(codecRegistry, CodecRegistries.fromCodecs(this)).asJava)
 
-          override def encode(writer: BsonWriter, value: $classTypeName, encoderContext: EncoderContext): Unit =
+          override def encode(writer: BsonWriter, value: $mainType, encoderContext: EncoderContext): Unit =
              writeValue(writer, value, encoderContext)
 
-          override def decode(reader: BsonReader, decoderContext: DecoderContext): $classTypeName = {
-            val map = Map[String, Any]()
+          override def decode(reader: BsonReader, decoderContext: DecoderContext): $mainType = {
+            val map = mutable.Map[String, Any]()
             reader.readStartDocument()
              while (reader.readBsonType ne BsonType.END_OF_DOCUMENT) {
                val name = reader.readName
@@ -211,11 +214,11 @@ private[codecs] object CaseClassCodec {
             $getInstance
           }
 
-          override def getEncoderClass: Class[$classTypeName] = classOf[$classTypeName]
+          override def getEncoderClass: Class[$mainType] = classOf[$mainType]
 
           private def writeValue[V](writer: BsonWriter, value: V, encoderContext: EncoderContext): Unit = {
             value match {
-              case value: $classTypeName => $writeValue
+              case value: $mainType => $writeValue
               case _ =>
                 val codec = registry.get(value.getClass).asInstanceOf[Encoder[V]]
                 encoderContext.encodeWithChildContext(codec, writer, value)
@@ -233,7 +236,7 @@ private[codecs] object CaseClassCodec {
 
           private def readArray[T](reader: BsonReader, decoderContext: DecoderContext, clazz: Class[T], typeArgs: List[Class[_]]): T = {
             reader.readStartArray()
-            val list = ListBuffer[Any]()
+            val list = mutable.ListBuffer[Any]()
             while (reader.readBsonType ne BsonType.END_OF_DOCUMENT) {
               list.append(readValue(reader, decoderContext, typeArgs.head, typeArgs.tail))
             }
@@ -246,7 +249,7 @@ private[codecs] object CaseClassCodec {
           if (isCaseClass) {
             registry.get(clazz).decode(reader, decoderContext)
           } else {
-            val map = Map[String, Any]()
+            val map = mutable.Map[String, Any]()
             val currentName = reader.getCurrentName
             reader.readStartDocument()
             while (reader.readBsonType ne BsonType.END_OF_DOCUMENT) {
@@ -259,9 +262,9 @@ private[codecs] object CaseClassCodec {
             map.toMap.asInstanceOf[T]
           }
         }
-        }
+      }
 
-       ${caseClassName.toTermName}($codecRegistry).asInstanceOf[Codec[$mainType]]
+       ${codecName.toTermName}($codecRegistry)
        """
     )
   }
