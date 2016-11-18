@@ -264,7 +264,8 @@ private[codecs] object CaseClassCodec {
         }
       }
 
-       ${codecName.toTermName}($codecRegistry)
+       val codec = ${codecName.toTermName}($codecRegistry)
+       codec
        """
     )
   }
