@@ -41,7 +41,7 @@ object MongoScalaBuild extends Build {
     libraryDependencies ++= coreDependencies,
     resolvers := mongoScalaResolvers,
     scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xlint", "-Xlint:-missing-interpolator"
-                          /*, "-Xlog-implicits", "-Yinfer-debug", "-Xprint:typer"*/)
+      /*,"-Ymacro-debug-verbose", "-Xlog-implicits", "-Yinfer-debug", "-Xprint:typer"*/)
   )
 
   val versionSettings = Versioning.settings(baseVersion)
