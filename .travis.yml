@@ -2,10 +2,13 @@
 language: scala
 scala:
   - "2.11.8"
+  - "2.12.0"
 
 jdk:
   - oraclejdk7
   - oraclejdk8
+
+
 
 # Branches to test
 branches:
@@ -20,6 +23,9 @@ notifications:
 
 matrix:
     fast_finish: true
+    exclude:
+      - scala: "2.12.0"
+      - jdk: oraclejdk7
 
 env:
   global:
