@@ -82,7 +82,7 @@ private[codecs] object CaseClassCodec {
               if (value.$name.isDefined) {
                 this.writeValue(writer, value.$name.get, encoderContext)
               } else {
-                this.writeValue(writer, bsonNull, encoderContext)
+                this.writeValue(writer, nullValue, encoderContext)
               }"""
             case _ => q"""
               writer.writeName($key)
@@ -112,8 +112,8 @@ private[codecs] object CaseClassCodec {
         case (f, name) =>
           val key = keyName(name)
           f match {
-            case optional if isOption(optional) => q"$name = Option(map($key)).asInstanceOf[$f]"
-            case _ => q"$name = map($key).asInstanceOf[$f]"
+            case optional if isOption(optional) => q"$name = Option(fieldsData($key)).asInstanceOf[$f]"
+            case _ => q"$name = fieldsData($key).asInstanceOf[$f]"
           }
       })
     }
@@ -183,88 +183,16 @@ private[codecs] object CaseClassCodec {
 
     c.Expr[Codec[T]](
       q"""
-        import scala.collection.JavaConverters._
-        import org.bson.{BsonNull, BsonReader, BsonType, BsonValue, BsonWriter}
-        import org.bson.codecs.configuration.{ CodecRegistry, CodecRegistries }
-        import org.bson.codecs.{ Encoder, Codec, DecoderContext, EncoderContext }
         import scala.collection.mutable
-        import scala.util.{ Failure, Success, Try }
+        import org.bson.codecs.configuration.CodecRegistry
+        import org.mongodb.scala.bson.codecs.macrocodecs.MacroCodecHelper
 
-        case class $codecName(codecRegistry: CodecRegistry) extends Codec[$mainType] {
-          private val fieldTypeArgsMap = $createFieldTypeArgsMap
-          private val clazzToCaseClassMap = $createClazzToCaseClassMap
-          private val registry = CodecRegistries.fromRegistries(List(codecRegistry, CodecRegistries.fromCodecs(this)).asJava)
-          private val unknownTypeArgs = List[Class[BsonValue]](classOf[BsonValue])
-          private val bsonNull = new BsonNull()
-
-          override def encode(writer: BsonWriter, value: $mainType, encoderContext: EncoderContext): Unit = {
-             writeValue(writer, value, encoderContext)
-           }
-
-          override def decode(reader: BsonReader, decoderContext: DecoderContext): $mainType = {
-            val map = mutable.Map[String, Any]()
-            reader.readStartDocument()
-             while (reader.readBsonType ne BsonType.END_OF_DOCUMENT) {
-               val name = reader.readName
-               val typeArgs = fieldTypeArgsMap.getOrElse(name, unknownTypeArgs)
-               map += (name -> readValue(reader, decoderContext, typeArgs.head, typeArgs.tail))
-            }
-            reader.readEndDocument()
-
-            $getInstance
-          }
-
-          override def getEncoderClass: Class[$mainType] = classOf[$mainType]
-
-          private def writeValue[V](writer: BsonWriter, value: V, encoderContext: EncoderContext): Unit = {
-            value match {
-              case value: $mainType => $writeValue
-              case _ =>
-                val codec = registry.get(value.getClass).asInstanceOf[Encoder[V]]
-                encoderContext.encodeWithChildContext(codec, writer, value)
-            }
-          }
-
-          private def readValue[T](reader: BsonReader, decoderContext: DecoderContext, clazz: Class[T], typeArgs: List[Class[_]]): T = {
-            val currentType = reader.getCurrentBsonType
-            currentType match {
-              case BsonType.DOCUMENT => readDocument(reader, decoderContext, clazz, typeArgs)
-              case BsonType.ARRAY => readArray(reader, decoderContext, clazz, typeArgs)
-              case BsonType.NULL =>
-                reader.readNull()
-                null.asInstanceOf[T]
-              case _ => registry.get(clazz).decode(reader, decoderContext)
-            }
-          }
-
-          private def readArray[T](reader: BsonReader, decoderContext: DecoderContext, clazz: Class[T], typeArgs: List[Class[_]]): T = {
-            reader.readStartArray()
-            val list = mutable.ListBuffer[Any]()
-            while (reader.readBsonType ne BsonType.END_OF_DOCUMENT) {
-              list.append(readValue(reader, decoderContext, typeArgs.head, typeArgs.tail))
-            }
-            reader.readEndArray()
-            list.toList.asInstanceOf[T]
-          }
-
-          private def readDocument[T](reader: BsonReader, decoderContext: DecoderContext, clazz: Class[T], typeArgs: List[Class[_]]): T = {
-            val isCaseClass = clazzToCaseClassMap.getOrElse(clazz, false)
-            if (isCaseClass) {
-              registry.get(clazz).decode(reader, decoderContext)
-            } else {
-              val map = mutable.Map[String, Any]()
-              val currentName = reader.getCurrentName
-              reader.readStartDocument()
-              while (reader.readBsonType ne BsonType.END_OF_DOCUMENT) {
-                // Can't trust the order of fields in a map
-                val name = reader.readName
-                val fieldClazzTypeArgs = fieldTypeArgsMap.getOrElse(name, typeArgs)
-                map += (name -> readValue(reader, decoderContext, fieldClazzTypeArgs.head, fieldClazzTypeArgs.tail))
-              }
-              reader.readEndDocument()
-              map.toMap.asInstanceOf[T]
-            }
-          }
+        case class $codecName(codecRegistry: CodecRegistry) extends MacroCodecHelper[$mainType] {
+          val fieldTypeArgsMap = $createFieldTypeArgsMap
+          val clazzToCaseClassMap = $createClazzToCaseClassMap
+          val encoderClazz = classOf[$mainType]
+          def getInstance(fieldsData: Map[String, Any]) = $getInstance
+          def writeCaseClassData(writer: BsonWriter, value: $mainType, encoderContext: EncoderContext, nullValue: BsonValue) = $writeValue
         }
         ${codecName.toTermName}($codecRegistry)
       """
