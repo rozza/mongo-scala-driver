@@ -225,7 +225,7 @@ private[codecs] object SealedCaseClassCodec {
     def getInstance = {
       val cases = knownTypes.map { st =>
         cq"${keyName(st)} => new $st(..${fieldSetters(fields(st))})"
-      } :+ cq"""_ => throw new UnsupportedOperationException("Unexpected class type: " + className)"""
+      } :+ cq"""_ => throw new CodecConfigurationException("Unexpected class type: " + className)"""
       q"className match { case ..$cases }"
     }
 
