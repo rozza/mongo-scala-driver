@@ -34,13 +34,7 @@ private[codecs] object CaseClassProvider {
 
     // Names
     def exprCodecRegistry = c.Expr[CodecRegistry](q"codecRegistry")
-    def codec = {
-      if (isSealed(mainType)) {
-        SealedCaseClassCodec.createCodec[T](c)(exprCodecRegistry)
-      } else {
-        CaseClassCodec.createCodec[T](c)(exprCodecRegistry)
-      }
-    }
+    def codec = CaseClassCodec.createCodec[T](c)(exprCodecRegistry)
 
     c.Expr[CodecProvider](
       q"""

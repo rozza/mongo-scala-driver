@@ -21,9 +21,9 @@ import scala.language.experimental.macros
 import scala.language.implicitConversions
 
 import org.bson.codecs.Codec
-import org.bson.codecs.configuration.{ CodecProvider, CodecRegistry }
+import org.bson.codecs.configuration.{CodecProvider, CodecRegistry}
 
-import org.mongodb.scala.bson.codecs.macrocodecs.{ CaseClassCodec, CaseClassProvider, SealedCaseClassCodec }
+import org.mongodb.scala.bson.codecs.macrocodecs.{CaseClassCodec, CaseClassProvider}
 
 /**
  * Macro based Codecs
@@ -82,25 +82,5 @@ object Macros {
    */
   @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
   def createCodec[T](codecRegistry: CodecRegistry): Codec[T] = macro CaseClassCodec.createCodec[T]
-
-  /**
-   * Creates a Codec for sealed class that defines various case classes.
-   *
-   * @tparam T the sealed class to create a Codec from
-   * @return the Codec for the case class
-   */
-  @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
-  def createSealedCodec[T](): Codec[T] = macro SealedCaseClassCodec.createCodecNoArgs[T]
-
-  /**
-   * Creates a Codec for sealed class that defines various case classes.
-   *
-   *
-   * @param codecRegistry the Codec Registry to use
-   * @tparam T the sealed class to create a Codec from
-   * @return the Codec for the case class
-   */
-  @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
-  def createSealedCodec[T](codecRegistry: CodecRegistry): Codec[T] = macro SealedCaseClassCodec.createCodec[T]
 
 }

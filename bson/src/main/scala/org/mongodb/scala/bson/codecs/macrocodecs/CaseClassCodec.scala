@@ -40,22 +40,34 @@ private[codecs] object CaseClassCodec {
 
     // Declared types
     val mainType = weakTypeOf[T]
+
     val stringType = typeOf[String]
     val mapTypeSymbol = typeOf[MapLike[_, _, _]].typeSymbol
 
     // Names
-    val codecName = TypeName(s"${mainType.typeSymbol.name.toTypeName}MacroCodec")
+    val classTypeName = mainType.typeSymbol.name.toTypeName
+    val codecName = TypeName(s"${classTypeName}SealedMacroCodec")
 
     // Type checkers
-    def keyName(t: TermName): Literal = Literal(Constant(t.toString))
-    def fields: List[(Type, TermName)] = mainType.members.sorted.filter(_.isMethod).map(_.asMethod).filter(_.isGetter)
-      .map(m => (m.returnType.asSeenFrom(mainType, mainType.typeSymbol), m.name))
-    def isMap(t: Type): Boolean = t.baseClasses.contains(mapTypeSymbol)
     def isCaseClass(t: Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isCaseClass
+    def isMap(t: Type): Boolean = t.baseClasses.contains(mapTypeSymbol)
     def isOption(t: Type): Boolean = t.typeSymbol == definitions.OptionClass
     def isTuple(t: Type): Boolean = definitions.TupleClass.seq.contains(t.typeSymbol)
     def isSealed(t: Type): Boolean = t.typeSymbol.isClass && t.typeSymbol.asClass.isSealed
     def isCaseClassOrSealed(t: Type): Boolean = isCaseClass(t) || isSealed(t)
+
+    // Data converters
+    def keyName(t: Type): Literal = Literal(Constant(t.toString))
+    def keyNameTerm(t: TermName): Literal = Literal(Constant(t.toString))
+    def allSubclasses(s: Symbol): Set[Symbol] = {
+      val directSubClasses = s.asClass.knownDirectSubclasses
+      directSubClasses ++ directSubClasses.flatMap({ s: Symbol => allSubclasses(s) })
+    }
+    val subClasses: List[Type] = allSubclasses(mainType.typeSymbol).map(_.asClass.toType).filter(isCaseClass).toList
+    if (isSealed(mainType) && subClasses.isEmpty) c.abort(c.enclosingPosition, "No known subclasses of the sealed class")
+    val knownTypes = (mainType +: subClasses).reverse
+    def fields: Map[Type, List[(TermName, Type)]] = knownTypes.map(t => (t, t.members.sorted.filter(_.isMethod).map(_.asMethod).filter(_.isGetter)
+      .map(m => (m.name, m.returnType.asSeenFrom(t, t.typeSymbol))))).toMap
 
     // Primitives type map
     val primitiveTypesMap: Map[Type, Type] = Map(
@@ -68,55 +80,6 @@ private[codecs] object CaseClassCodec {
       typeOf[Long] -> typeOf[java.lang.Long],
       typeOf[Short] -> typeOf[java.lang.Short]
     )
-
-    /**
-     * Writes the Case Class fields and values to the BsonWriter
-     */
-    def writeValue: Tree = {
-      val writeFields = fields.map({
-        case (f, name) =>
-          val key = keyName(name)
-          f match {
-            case optional if isOption(optional) => q"""
-              writer.writeName($key)
-              if (value.$name.isDefined) {
-                this.writeValue(writer, value.$name.get, encoderContext)
-              } else {
-                this.writeValue(writer, nullValue, encoderContext)
-              }"""
-            case _ => q"""
-              writer.writeName($key)
-              this.writeValue(writer, value.$name, encoderContext)
-              """
-          }
-      })
-      q"""
-        writer.writeStartDocument()
-        ..$writeFields
-        writer.writeEndDocument()
-      """
-    }
-
-    /**
-     * Returns a new instance of the case class using the [[fieldSetters]] method to set the name and values.
-     */
-    def getInstance: Tree = q"new ${mainType.resultType}(..$fieldSetters)"
-
-    /**
-     * Gets the name and value of fields for the case class.
-     *
-     * Uses the map which contains the decoded document.
-     */
-    def fieldSetters: List[Tree] = {
-      fields.map({
-        case (f, name) =>
-          val key = keyName(name)
-          f match {
-            case optional if isOption(optional) => q"$name = Option(fieldsData($key)).asInstanceOf[$f]"
-            case _ => q"$name = fieldsData($key).asInstanceOf[$f]"
-          }
-      })
-    }
 
     /**
      * Flattens the type args for any given type.
@@ -150,10 +113,10 @@ private[codecs] object CaseClassCodec {
      *
      * @return a map of the field names with a list of the contain types
      */
-    def createFieldTypeArgsMap = {
+    def createFieldTypeArgsMap(fields: List[(TermName, Type)]) = {
       val setTypeArgs = fields.map({
-        case (f, name) =>
-          val key = keyName(name)
+        case (name, f) =>
+          val key = keyNameTerm(name)
           q"""
             typeArgs += ($key -> {
               val tpeArgs = mutable.ListBuffer.empty[Class[_]]
@@ -169,32 +132,134 @@ private[codecs] object CaseClassCodec {
       """
     }
 
-    def createClazzToCaseClassMap = {
-      val setClazzIsCaseClass = fields.map({
-        case (f, name) => q"clazzIsCaseClass ++= ${flattenTypeArgs(f).map(t => q"(classOf[${t.finalResultType}], ${isCaseClassOrSealed(t)})")}"
-      })
+    /**
+     * For each case class sets the Map of the given field names and their field types.
+     */
+    def createClassFieldTypeArgsMap = {
+      val setClassFieldTypeArgs = fields.map(field =>
+        q"""
+            classFieldTypeArgs += (${keyName(field._1)} -> ${createFieldTypeArgsMap(field._2)})
+        """)
 
       q"""
-        val clazzIsCaseClass = mutable.Map[Class[_], Boolean]()
-        ..$setClazzIsCaseClass
-        clazzIsCaseClass.toMap
+        val classFieldTypeArgs = mutable.Map[String, Map[String, List[Class[_]]]]()
+        ..$setClassFieldTypeArgs
+        classFieldTypeArgs.toMap
       """
+    }
+
+    /**
+     * Creates a `Map[String, Class[_]]` mapping the case class name and the type.
+     *
+     * @return the case classes map
+     */
+    def caseClassesMap = {
+      val setSubClasses = knownTypes.map(t => q"caseClassesMap += (${keyName(t)} -> classOf[${t.finalResultType}])")
+      q"""
+        val caseClassesMap = mutable.Map[String, Class[_]]()
+        ..$setSubClasses
+        caseClassesMap.toMap
+      """
+    }
+
+    /**
+     * Creates a `Map[Class[_], Boolean]` mapping field types to a boolean representing if they are a case class.
+     *
+     * @return the class to case classes map
+     */
+    def classToCaseClassMap = {
+      val flattenedFieldTypes = fields.flatMap({ case (t, types) => types.map(f => f._2) :+ t})
+      val setclassToCaseClassMap = flattenedFieldTypes.map(t => q"""classToCaseClassMap ++= ${flattenTypeArgs(t).map(t =>
+        q"(classOf[${t.finalResultType}], ${isCaseClassOrSealed(t)})")}""")
+
+      q"""
+        val classToCaseClassMap = mutable.Map[Class[_], Boolean]()
+        ..$setclassToCaseClassMap
+        classToCaseClassMap.toMap
+      """
+    }
+
+    /**
+     * Handles the writing of case class fields.
+     *
+     * @param fields the list of fields
+     * @return the tree that writes the case class fields
+     */
+    def writeClassValues(fields: List[(TermName, Type)]): List[Tree] = {
+      fields.map({
+        case (name, f) =>
+          val key = keyNameTerm(name)
+          f match {
+            case optional if isOption(optional) => q"""
+              val localVal = instanceValue.$name
+              writer.writeName($key)
+              if (localVal.isDefined) {
+                this.writeValue(writer, localVal.get, encoderContext)
+              } else {
+                this.writeValue(writer, this.bsonNull, encoderContext)
+              }"""
+            case _ => q"""
+              val localVal = instanceValue.$name
+              writer.writeName($key)
+              this.writeValue(writer, localVal, encoderContext)
+              """
+          }
+      })
+    }
+
+    /**
+     * Writes the Case Class fields and values to the BsonWriter
+     */
+    def writeValue: Tree = {
+      val cases: Seq[Tree] = {
+        fields.map(field => cq""" ${keyName(field._1)} =>
+            val instanceValue = value.asInstanceOf[${field._1}]
+            ..${writeClassValues(field._2)}""").toSeq
+      }
+
+      q"""
+        writer.writeStartDocument()
+        this.writeClassFieldName(writer, className, encoderContext)
+        className match { case ..$cases }
+        writer.writeEndDocument()
+      """
+    }
+
+    def fieldSetters(fields: List[(TermName, Type)]) = {
+      fields.map({
+        case (name, f) =>
+          val key = keyNameTerm(name)
+          f match {
+            case optional if isOption(optional) => q"$name = Option(fieldData($key)).asInstanceOf[$f]"
+            case _ => q"$name = fieldData($key).asInstanceOf[$f]"
+          }
+      })
+    }
+
+    def getInstance = {
+      val cases = knownTypes.map { st =>
+        cq"${keyName(st)} => new $st(..${fieldSetters(fields(st))})"
+      } :+ cq"""_ => throw new CodecConfigurationException("Unexpected class type: " + className)"""
+      q"className match { case ..$cases }"
     }
 
     c.Expr[Codec[T]](
       q"""
         import scala.collection.mutable
         import org.bson.codecs.configuration.CodecRegistry
+        import org.bson.codecs.configuration.CodecConfigurationException
         import org.mongodb.scala.bson.codecs.macrocodecs.MacroCodecHelper
 
-        case class $codecName(codecRegistry: CodecRegistry) extends MacroCodecHelper[$mainType] {
-          val fieldTypeArgsMap = $createFieldTypeArgsMap
-          val clazzToCaseClassMap = $createClazzToCaseClassMap
-          val encoderClazz = classOf[$mainType]
-          def getInstance(fieldsData: Map[String, Any]) = $getInstance
-          def writeCaseClassData(writer: BsonWriter, value: $mainType, encoderContext: EncoderContext, nullValue: BsonValue) = $writeValue
+        case class $codecName(codecRegistry: CodecRegistry) extends MacroCodecHelper[$classTypeName] {
+          val caseClassesMap = $caseClassesMap
+          val classToCaseClassMap = $classToCaseClassMap
+          val classFieldTypeArgsMap = $createClassFieldTypeArgsMap
+          val encoderClass = classOf[$classTypeName]
+          def getInstance(className: String, fieldData: Map[String, Any]) = $getInstance
+          def writeCaseClassData(className: String, writer: BsonWriter, value: $mainType, encoderContext: EncoderContext) = $writeValue
         }
-        ${codecName.toTermName}($codecRegistry)
+
+      ${codecName.toTermName}($codecRegistry).asInstanceOf[Codec[$mainType]]
       """
     )
   }
