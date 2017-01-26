@@ -13,11 +13,10 @@ set -o errexit  # Exit the script with error if any of the commands fail
 MONGODB_URI=${MONGODB_URI:-}
 TOPOLOGY=${TOPOLOGY:-server}
 
-
-
 ############################################
 #            Main Program                  #
 ############################################
+JAVA_HOME="/opt/java/jdk8"
 
 # Provision the correct connection string and set up SSL if needed
 if [ "$TOPOLOGY" == "sharded_cluster" ]; then
@@ -30,7 +29,6 @@ if [ "$TOPOLOGY" == "sharded_cluster" ]; then
 fi
 
 echo "Running Integration tests for Scala $SCALA_VERSION, $AUTH tests over $SSL for $TOPOLOGY and connecting to $MONGODB_URI"
-export JAVA_HOME="/opt/java/jdk8"
 
 ./sbt -java-home $JAVA_HOME version
 ./sbt -java-home $JAVA_HOME ++${SCALA_VERSION} it:test -Dorg.mongodb.test.uri=${MONGODB_URI}
