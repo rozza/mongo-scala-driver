@@ -23,4 +23,5 @@ echo signing.secretKeyRingFile=${SECRING_FILE} >> $PUBLISH_PROPERTIES_FILE
 echo "Publishing snapshots"
 
 
+./sbt -java-home $JAVA_HOME version
 ./sbt -java-home $JAVA_HOME +clean +publishSnapshot -DpublishProperties=$PUBLISH_PROPERTIES_FILE

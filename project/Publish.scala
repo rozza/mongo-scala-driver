@@ -24,7 +24,7 @@ import sbtassembly.AssemblyPlugin.autoImport._
 
 object Publish {
 
-  val propFilename: String = sys.props.getOrElse("publishProperties", Path.userHome.getAbsolutePath + ".gradle/gradle.properties")
+  val propFilename: String = sys.props.getOrElse("publishProperties", Path.userHome.getAbsolutePath + "/.gradle/gradle.properties")
   val propFile = new File(propFilename)
 
   val username = "nexusUsername"
