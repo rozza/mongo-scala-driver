@@ -329,16 +329,16 @@ tasks:
 
     - name: "integration-test"
       depends_on:
-        - variant: "unit-test"
-          name: "unit-tests"
+        - variant: ".unit-test"
+          name: "unit-test"
       commands:
         - func: "bootstrap mongo-orchestration"
         - func: "run integration tests"
 
     - name: "publish-snapshot"
       depends_on:
-        - variant: "integration-test"
-          name: "integration-tests"
+        - variant: ".integration-test"
+          name: "integration-test"
       commands:
         - func: "publish snapshot"
 
@@ -438,6 +438,7 @@ buildvariants:
 - matrix_name: "unit-tests"
   matrix_spec: { scalaVersion: "*", os: "*" }
   display_name: "Unit: Scala ${scalaVersion}, ${os}"
+  tags: ["unit-test"]
   tasks:
      - name: "unit-test"
 
@@ -445,6 +446,7 @@ buildvariants:
   matrix_spec: { auth: "*", ssl: "*", scalaVersion: "*", version: "*", topology: "*", os: "*" }
   exclude_spec: { version: "2.4", ssl: "ssl", scalaVersion: "*", auth: "*", topology: "*", os: "*" }
   display_name: "Integration: Scala ${scalaVersion}, Mongo: ${version} ${topology} ${auth} ${ssl} ${os}"
+  tags: ["integration-test"]
   tasks:
      - name: "integration-test"
 
