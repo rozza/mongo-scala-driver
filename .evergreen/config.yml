@@ -193,7 +193,7 @@ functions:
   "upload test results":
     - command: attach.xunit_results
       params:
-        file: ./src/*/build/test-results/TEST-*.xml
+        file: ./*/target/test-results/*.xml
 
   "bootstrap mongo-orchestration":
     - command: shell.exec
@@ -232,7 +232,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          SCALA_VERSION="${SCALA_VERSION}" .evergreen/run-it-tests.sh
+          SCALA_VERSION="${SCALA_VERSION}" MONGODB_URI="${MONGODB_URI}" TOPOLOGY=${TOPOLOGY} .evergreen/run-it-tests.sh
 
   "cleanup":
     - command: shell.exec
@@ -350,23 +350,6 @@ axes:
         display_name: "3.4"
         variables:
            VERSION: "3.4"
-      - id: "3.2"
-        display_name: "3.2"
-        variables:
-           VERSION: "3.2"
-      - id: "3.0"
-        display_name: "3.0"
-        variables:
-           VERSION: "3.0"
-      - id: "2.6"
-        display_name: "2.6"
-        variables:
-           VERSION: "2.6"
-      - id: "2.4"
-        display_name: "2.4"
-        variables:
-           VERSION: "2.4"
-
   - id: os
     display_name: OS
     values:
@@ -377,41 +360,10 @@ axes:
   - id: topology
     display_name: Topology
     values:
-      - id: "standalone"
-        display_name: Standalone
-        variables:
-           TOPOLOGY: "server"
       - id: "replicaset"
-        display_name: Replica Set
+        display_name: "Replica Set"
         variables:
            TOPOLOGY: "replica_set"
-      - id: "sharded-cluster"
-        display_name: Sharded Cluster
-        variables:
-           TOPOLOGY: "sharded_cluster"
-
-  - id: auth
-    display_name: Authentication
-    values:
-      - id: "auth"
-        display_name: Auth
-        variables:
-           AUTH: "auth"
-      - id: "noauth"
-        display_name: NoAuth
-        variables:
-           AUTH: "noauth"
-  - id: ssl
-    display_name: SSL
-    values:
-      - id: "ssl"
-        display_name: SSL
-        variables:
-           SSL: "ssl"
-      - id: "nossl"
-        display_name: NoSSL
-        variables:
-           SSL: "nossl"
 
   - id: scalaVersion
     display_name: Scala Version
@@ -443,9 +395,8 @@ buildvariants:
      - name: "unit-test"
 
 - matrix_name: "integration-tests"
-  matrix_spec: { auth: "*", ssl: "*", scalaVersion: "*", version: "*", topology: "*", os: "*" }
-  exclude_spec: { version: "2.4", ssl: "ssl", scalaVersion: "*", auth: "*", topology: "*", os: "*" }
-  display_name: "Integration: Scala ${scalaVersion}, Mongo: ${version} ${topology} ${auth} ${ssl} ${os}"
+  matrix_spec: { scalaVersion: "*", version: "*", topology: "*", os: "*" }
+  display_name: "Integration: Scala ${scalaVersion}, Mongo: ${version} ${topology} ${os}"
   tags: ["integration-test"]
   tasks:
      - name: "integration-test"
