@@ -9,7 +9,7 @@ JAVA_HOME="/opt/java/jdk8"
 #            Main Program                  #
 ############################################
 
-echo "Compiling and running ScalaStyle"
+echo "Running static checks"
 
 ./sbt -java-home $JAVA_HOME version
-./sbt -java-home $JAVA_HOME clean scalastyle
+./sbt -java-home $JAVA_HOME clean compile doc scalastyle

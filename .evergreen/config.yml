@@ -266,14 +266,14 @@ functions:
         file="${PROJECT_DIRECTORY}/.evergreen/install-dependencies.sh"
         [ -f ${file} ] && sh ${file} || echo "${file} not available, skipping"
 
-  "run scalastyle":
+  "run static checks":
     - command: shell.exec
       type: test
       params:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          .evergreen/run-scalastyle.sh
+          .evergreen/run-static-checks.sh
 
   "run unit tests":
     - command: shell.exec
@@ -334,7 +334,7 @@ tasks:
     # Compile / check build variant
     - name: "static-checks-task"
       commands:
-        - func: "run scalastyle"
+        - func: "run static checks"
 
     - name: "unit-test-task"
       depends_on:
