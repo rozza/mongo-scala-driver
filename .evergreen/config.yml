@@ -407,7 +407,6 @@ axes:
 
 buildvariants:
 
-# Test packaging and other release related routines
 - name: "static-checks"
   display_name: "Static Checks"
   run_on:
