@@ -216,6 +216,15 @@ functions:
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
           PROJECT_DIRECTORY=${PROJECT_DIRECTORY} NEXUS_USERNAME=${nexus_username} NEXUS_PASSWORD=${nexus_password} SIGNING_PASSWORD=${signing_password} SIGNING_KEY_ID=${signing_keyId} RING_FILE_GPG_BASE64=${ring_file_gpg_base64} .evergreen/publish.sh
 
+  "run scalastyle":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          .evergreen/run-scalastyle.sh
+
   "run unit tests":
     - command: shell.exec
       type: test
@@ -224,6 +233,15 @@ functions:
         script: |
           ${PREPARE_SHELL}
           SCALA_VERSION="${SCALA_VERSION}" .evergreen/run-unit-tests.sh
+
+  "run coverage tests":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          SCALA_VERSION="${SCALA_VERSION}" .evergreen/run-coverage-tests.sh
 
   "run integration tests":
     - command: shell.exec
@@ -315,10 +333,7 @@ tasks:
     # Compile / check build variant
     - name: "static-analysis"
       commands:
-        - func: "exec script"
-          vars:
-            file: ".evergreen/scalastyle.sh"
-        - func: "upload build"
+        - func: "run scalastyle"
 
     - name: "unit-test"
       depends_on:
@@ -327,10 +342,22 @@ tasks:
       commands:
         - func: "run unit tests"
 
-    - name: "integration-test"
+    - name: "coverage-test"
       depends_on:
         - variant: ".unit-test"
           name: "unit-test"
+      commands:
+        - func: "bootstrap mongo-orchestration"
+          vars:
+            VERSION: "3.4"
+            TOPOLOGY: "server"
+        - func: "run coverage tests"
+        - func: "upload build"
+
+    - name: "integration-test"
+      depends_on:
+        - variant: "coverage-tests"
+          name: "coverage-test"
       commands:
         - func: "bootstrap mongo-orchestration"
         - func: "run integration tests"
@@ -393,6 +420,13 @@ buildvariants:
   tags: ["unit-test"]
   tasks:
      - name: "unit-test"
+
+- name: coverage-tests
+  display_name: "Coverage tests"
+  run_on:
+    - rhel62-test
+  tasks:
+    - name: "coverage-test"
 
 - matrix_name: "integration-tests"
   matrix_spec: { scalaVersion: "*", version: "*", topology: "*", os: "*" }
