@@ -291,7 +291,7 @@ functions:
         working_dir: "src"
         script: |
           ${PREPARE_SHELL}
-          SCALA_VERSION="${SCALA_VERSION}" .evergreen/run-coverage.sh
+          MONGODB_URI="${MONGODB_URI}" .evergreen/run-coverage.sh
 
   "run integration tests":
     - command: shell.exec
