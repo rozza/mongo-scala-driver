@@ -193,7 +193,7 @@ functions:
   "upload test results":
     - command: attach.xunit_results
       params:
-        file: ./*/target/test-results/*.xml
+        file: ./src/*/target/test-results/*.xml
 
   "bootstrap mongo-orchestration":
     - command: shell.exec
@@ -205,52 +205,6 @@ functions:
     - command: expansions.update
       params:
         file: mo-expansion.yml
-
-  "publish snapshot":
-    - command: shell.exec
-      type: test
-      params:
-        silent: true
-        working_dir: "src"
-        script: |
-          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          PROJECT_DIRECTORY=${PROJECT_DIRECTORY} NEXUS_USERNAME=${nexus_username} NEXUS_PASSWORD=${nexus_password} SIGNING_PASSWORD=${signing_password} SIGNING_KEY_ID=${signing_keyId} RING_FILE_GPG_BASE64=${ring_file_gpg_base64} .evergreen/publish.sh
-
-  "run scalastyle":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          .evergreen/run-scalastyle.sh
-
-  "run unit tests":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          SCALA_VERSION="${SCALA_VERSION}" .evergreen/run-unit-tests.sh
-
-  "run coverage tests":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          SCALA_VERSION="${SCALA_VERSION}" .evergreen/run-coverage-tests.sh
-
-  "run integration tests":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: "src"
-        script: |
-          ${PREPARE_SHELL}
-          SCALA_VERSION="${SCALA_VERSION}" MONGODB_URI="${MONGODB_URI}" TOPOLOGY=${TOPOLOGY} .evergreen/run-it-tests.sh
 
   "cleanup":
     - command: shell.exec
@@ -312,6 +266,53 @@ functions:
         file="${PROJECT_DIRECTORY}/.evergreen/install-dependencies.sh"
         [ -f ${file} ] && sh ${file} || echo "${file} not available, skipping"
 
+  "run scalastyle":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          .evergreen/run-scalastyle.sh
+
+  "run unit tests":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          SCALA_VERSION="${SCALA_VERSION}" .evergreen/run-unit-tests.sh
+
+  "run coverage tests":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          SCALA_VERSION="${SCALA_VERSION}" .evergreen/run-coverage-tests.sh
+
+  "run integration tests":
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: "src"
+        script: |
+          ${PREPARE_SHELL}
+          SCALA_VERSION="${SCALA_VERSION}" MONGODB_URI="${MONGODB_URI}" TOPOLOGY=${TOPOLOGY} .evergreen/run-it-tests.sh
+
+  "publish snapshot":
+    - command: shell.exec
+      type: test
+      params:
+        silent: true
+        working_dir: "src"
+        script: |
+          # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
+          PROJECT_DIRECTORY=${PROJECT_DIRECTORY} NEXUS_USERNAME=${nexus_username} NEXUS_PASSWORD=${nexus_password} SIGNING_PASSWORD=${signing_password} SIGNING_KEY_ID=${signing_key_id} RING_FILE_GPG_BASE64=${ring_file_gpg_base64} .evergreen/publish.sh
+
+
 pre:
   - func: "fetch source"
   - func: "prepare resources"
@@ -331,21 +332,21 @@ post:
 tasks:
 
     # Compile / check build variant
-    - name: "static-analysis"
+    - name: "static-checks-task"
       commands:
         - func: "run scalastyle"
 
-    - name: "unit-test"
+    - name: "unit-test-task"
       depends_on:
         - variant: "static-checks"
-          name: "static-analysis"
+          name: "static-checks-task"
       commands:
         - func: "run unit tests"
 
-    - name: "coverage-test"
+    - name: "coverage-task"
       depends_on:
         - variant: ".unit-test"
-          name: "unit-test"
+          name: "unit-test-task"
       commands:
         - func: "bootstrap mongo-orchestration"
           vars:
@@ -354,53 +355,53 @@ tasks:
         - func: "run coverage tests"
         - func: "upload build"
 
-    - name: "integration-test"
+    - name: "integration-test-task"
       depends_on:
-        - variant: "coverage-tests"
-          name: "coverage-test"
+        - variant: "coverage"
+          name: "coverage-task"
       commands:
         - func: "bootstrap mongo-orchestration"
         - func: "run integration tests"
 
-    - name: "publish-snapshot"
+    - name: "publish-snapshot-task"
       depends_on:
         - variant: ".integration-test"
-          name: "integration-test"
+          name: "integration-test-task"
       commands:
         - func: "publish snapshot"
 
 axes:
-  - id: version
-    display_name: MongoDB Version
+  - id: "version"
+    display_name: "MongoDB Version"
     values:
       - id: "3.4"
         display_name: "3.4"
         variables:
            VERSION: "3.4"
-  - id: os
-    display_name: OS
+  - id: "os"
+    display_name: "OS"
     values:
       - id: "rhel62"
         display_name: "RHEL 6.2"
-        run_on: rhel62-test
+        run_on: "rhel62-test"
 
-  - id: topology
-    display_name: Topology
+  - id: "topology"
+    display_name: "Topology"
     values:
       - id: "replicaset"
         display_name: "Replica Set"
         variables:
            TOPOLOGY: "replica_set"
 
-  - id: scalaVersion
-    display_name: Scala Version
+  - id: "scalaVersion"
+    display_name: "Scala Version"
     values:
       - id: "2.11.8"
-        display_name: 2.11.8
+        display_name: "2.11.8"
         variables:
            SCALA_VERSION: "2.11.8"
       - id: "2.12.1"
-        display_name: 2.12.1
+        display_name: "2.12.1"
         variables:
            SCALA_VERSION: "2.12.1"
 
@@ -410,34 +411,34 @@ buildvariants:
 - name: "static-checks"
   display_name: "Static Checks"
   run_on:
-    - rhel62-test
+    - "rhel62-test"
   tasks:
-    - name: "static-analysis"
+    - name: "static-checks-task"
 
 - matrix_name: "unit-tests"
   matrix_spec: { scalaVersion: "*", os: "*" }
   display_name: "Unit: Scala ${scalaVersion}, ${os}"
   tags: ["unit-test"]
   tasks:
-     - name: "unit-test"
+     - name: "unit-test-task"
 
-- name: coverage-tests
-  display_name: "Coverage tests"
+- name: "coverage"
+  display_name: "Coverage"
   run_on:
-    - rhel62-test
+    - "rhel62-test"
   tasks:
-    - name: "coverage-test"
+    - name: "coverage-task"
 
 - matrix_name: "integration-tests"
   matrix_spec: { scalaVersion: "*", version: "*", topology: "*", os: "*" }
   display_name: "Integration: Scala ${scalaVersion}, Mongo: ${version} ${topology} ${os}"
   tags: ["integration-test"]
   tasks:
-     - name: "integration-test"
+     - name: "integration-test-task"
 
-- name: publish-snapshot
+- name: "publish-snapshot"
   display_name: "Publish Snapshot"
   run_on:
-    - rhel62-test
+    - "rhel62-test"
   tasks:
-    - name: "publish-snapshot"
+    - name: "publish-snapshot-task"
