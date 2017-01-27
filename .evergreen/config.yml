@@ -193,7 +193,7 @@ functions:
   "upload test results":
     - command: attach.xunit_results
       params:
-        file: ./src/*/target/test-results/*.xml
+        file: ./src/*/target/test-reports/*.xml
 
   "bootstrap mongo-orchestration":
     - command: shell.exec
