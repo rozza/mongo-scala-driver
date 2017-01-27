@@ -6,11 +6,12 @@ set -o errexit  # Exit the script with error if any of the commands fail
 # Supported/used environment variables:
 #       SCALA_VERSION   Sets the Scala version
 
+JAVA_HOME="/opt/java/jdk8"
+
 ############################################
 #            Main Program                  #
 ############################################
 
-JAVA_HOME="/opt/java/jdk8"
 echo "Running unit tests for Scala $SCALA_VERSION"
 
 ./sbt -java-home $JAVA_HOME version

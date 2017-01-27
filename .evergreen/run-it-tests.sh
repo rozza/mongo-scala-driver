@@ -12,23 +12,18 @@ set -o errexit  # Exit the script with error if any of the commands fail
 
 MONGODB_URI=${MONGODB_URI:-}
 TOPOLOGY=${TOPOLOGY:-server}
+JAVA_HOME="/opt/java/jdk8"
 
 ############################################
 #            Main Program                  #
 ############################################
-JAVA_HOME="/opt/java/jdk8"
 
-# Provision the correct connection string and set up SSL if needed
+# Provision the correct connection string
 if [ "$TOPOLOGY" == "sharded_cluster" ]; then
-
-     if [ "$AUTH" = "auth" ]; then
-       export MONGODB_URI="mongodb://bob:pwd123@localhost:27017/?authSource=admin"
-     else
-       export MONGODB_URI="mongodb://localhost:27017"
-     fi
+    MONGODB_URI="mongodb://localhost:27017"
 fi
 
-echo "Running Integration tests for Scala $SCALA_VERSION, $AUTH tests over $SSL for $TOPOLOGY and connecting to $MONGODB_URI"
+echo "Running Integration tests for Scala $SCALA_VERSION, $TOPOLOGY and connecting to $MONGODB_URI"
 
 ./sbt -java-home $JAVA_HOME version
 ./sbt -java-home $JAVA_HOME ++${SCALA_VERSION} it:test -Dorg.mongodb.test.uri=${MONGODB_URI}

@@ -302,7 +302,7 @@ functions:
           ${PREPARE_SHELL}
           SCALA_VERSION="${SCALA_VERSION}" MONGODB_URI="${MONGODB_URI}" TOPOLOGY=${TOPOLOGY} .evergreen/run-it-tests.sh
 
-  "publish snapshot":
+  "publish snapshots":
     - command: shell.exec
       type: test
       params:
@@ -310,7 +310,7 @@ functions:
         working_dir: "src"
         script: |
           # DO NOT ECHO WITH XTRACE (which PREPARE_SHELL does)
-          PROJECT_DIRECTORY=${PROJECT_DIRECTORY} NEXUS_USERNAME=${nexus_username} NEXUS_PASSWORD=${nexus_password} SIGNING_PASSWORD=${signing_password} SIGNING_KEY_ID=${signing_key_id} RING_FILE_GPG_BASE64=${ring_file_gpg_base64} .evergreen/publish.sh
+          PROJECT_DIRECTORY=${PROJECT_DIRECTORY} NEXUS_USERNAME=${nexus_username} NEXUS_PASSWORD=${nexus_password} SIGNING_PASSWORD=${signing_password} SIGNING_KEY_ID=${signing_key_id} RING_FILE_GPG_BASE64=${ring_file_gpg_base64} .evergreen/publish-snapshots.sh
 
 
 pre:
@@ -363,12 +363,12 @@ tasks:
         - func: "bootstrap mongo-orchestration"
         - func: "run integration tests"
 
-    - name: "publish-snapshot-task"
+    - name: "publish-snapshots-task"
       depends_on:
         - variant: ".integration-test"
           name: "integration-test-task"
       commands:
-        - func: "publish snapshot"
+        - func: "publish snapshots"
 
 axes:
   - id: "version"
@@ -436,9 +436,9 @@ buildvariants:
   tasks:
      - name: "integration-test-task"
 
-- name: "publish-snapshot"
-  display_name: "Publish Snapshot"
+- name: "publish-snapshots"
+  display_name: "Publish Snapshots"
   run_on:
     - "rhel62-test"
   tasks:
-    - name: "publish-snapshot-task"
+    - name: "publish-snapshots-task"

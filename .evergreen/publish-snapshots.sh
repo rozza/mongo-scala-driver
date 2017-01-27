@@ -1,12 +1,14 @@
 #!/bin/bash
 
 # DO NOT ECHO COMMANDS AS THEY CONTAIN SECRETS!
-
 set -o errexit  # Exit the script with error if any of the commands fail
 
-############################################
-#            Main Program                  #
-############################################
+# Used environment variables:
+#   NEXUS_USERNAME
+#   NEXUS_PASSWORD
+#   SIGNING_KEY_ID
+#   SIGNING_PASSWORD
+#   RING_FILE_GPG_BASE64
 
 JAVA_HOME="/opt/java/jdk8"
 PUBLISH_PROPERTIES_FILE=${PROJECT_DIRECTORY}/.publishProperties
@@ -21,6 +23,10 @@ echo nexusPassword=${NEXUS_PASSWORD} >> $PUBLISH_PROPERTIES_FILE
 echo signing.keyId=${SIGNING_KEY_ID} >> $PUBLISH_PROPERTIES_FILE
 echo signing.password=${SIGNING_PASSWORD} >> $PUBLISH_PROPERTIES_FILE
 echo signing.secretKeyRingFile=${SECRING_FILE} >> $PUBLISH_PROPERTIES_FILE
+
+############################################
+#            Main Program                  #
+############################################
 
 echo "Publishing snapshots"
 
