@@ -79,7 +79,7 @@ class MongoCollectionCaseClassSpec  extends RequiresMongoDBISpec {
     database =>
       val collection = database.getCollection[Contact](collectionName).withCodecRegistry(codecRegistry)
 
-      database.getCollection(collectionName).insertOne(Document("""{_id: 5, phone: "555 232323", active: true}""")).futureValue.head
+      database.getCollection(collectionName).insertOne(Document("""{_id: 5, phone: "555 232323", active: true}""")).futureValue
       val contact = Contact("555 232323")
       collection.find[Contact]().first().futureValue.head should equal(contact)
   }

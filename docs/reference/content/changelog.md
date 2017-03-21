@@ -10,6 +10,10 @@ title = "Changelog"
 
 Changes between released versions
 
+### 2.0.0
+
+  * Added SingleObservable trait and implicits for easy conversion and identification of Observables that return a single result. [SCALA-234](https://jira.mongodb.org/browse/SCALA-234) 
+
 ### 1.2.1
 
   * Removed erroneous scala-reflect dependency. [SCALA-288](https://jira.mongodb.org/browse/SCALA-288) 
