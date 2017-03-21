@@ -522,7 +522,7 @@ case class MongoCollection[TResult](private val wrapped: JMongoCollection[TResul
    * @tparam C   the target document type of the iterable.
    * @return the fluent list indexes interface
    */
-  def listIndexes[C]()(implicit e: C DefaultsTo TResult, ct: ClassTag[C]): ListIndexesObservable[C] =
+  def listIndexes[C]()(implicit e: C DefaultsTo Document, ct: ClassTag[C]): ListIndexesObservable[C] =
     ListIndexesObservable(wrapped.listIndexes(ct))
 
   /**
