@@ -362,6 +362,9 @@ trait ObservableImplicits {
         override def onComplete(): Unit = promise.failure(new IllegalStateException("Observable completed without returning a result"))
 
         override def onNext(tResult: T): Unit = {
+          if (subscription.isEmpty) {
+            throw new IllegalStateException("The Observable has not been subscribed to.")
+          }
           subscription.get.unsubscribe()
           promise.success(tResult)
         }

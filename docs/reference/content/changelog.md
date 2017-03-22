@@ -10,6 +10,10 @@ title = "Changelog"
 
 Changes between released versions
 
+### 2.0.0
+
+  * Improved error message when actioning unsubscribed to Observables. [SCALA-248](https://jira.mongodb.org/browse/SCALA-248) 
+
 ### 1.2.1
 
   * Removed erroneous scala-reflect dependency. [SCALA-288](https://jira.mongodb.org/browse/SCALA-288) 
