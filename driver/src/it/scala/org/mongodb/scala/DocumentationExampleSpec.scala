@@ -20,7 +20,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.language.implicitConversions
 
-import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonString}
+import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonNull, BsonString, BsonValue}
 
 //scalastyle:off magic.number
 class DocumentationExampleSpec extends RequiresMongoDBISpec {
@@ -312,7 +312,8 @@ class DocumentationExampleSpec extends RequiresMongoDBISpec {
     collection.count().execute() should equal(2)
 
     //Start Example 39
-    var findObservable = collection.find(Document("item" -> None))
+    import org.mongodb.scala.model.Filters
+    var findObservable = collection.find(Filters.eq("item", BsonNull()))
     //End Example 39
 
     findObservable.execute().size should equal(2)
@@ -362,26 +363,26 @@ class DocumentationExampleSpec extends RequiresMongoDBISpec {
     findObservable = collection.find(Filters.eq("status", "A")).projection(Projections.include("item", "status"))
     //End Example 44
 
-    findObservable.execute().foreach(doc => doc.keys should contain only("_id", "item", "status"))
+    findObservable.execute().foreach((doc: Document) => doc.keys should contain only("_id", "item", "status"))
 
     //Start Example 45
     findObservable = collection.find(Filters.eq("status", "A"))
       .projection(Projections.fields(Projections.include("item", "status"), Projections.excludeId()))
     //End Example 45
 
-    findObservable.execute().foreach(doc => doc.keys should contain only("item", "status"))
+    findObservable.execute().foreach((doc: Document) => doc.keys should contain only("item", "status"))
 
     //Start Example 46
     findObservable = collection.find(Filters.eq("status", "A")).projection(Projections.exclude("item", "status"))
     //End Example 46
 
-    findObservable.execute().foreach(doc => doc.keys should contain only("_id", "size", "instock"))
+    findObservable.execute().foreach((doc: Document) => doc.keys should contain only("_id", "size", "instock"))
 
     //Start Example 47
     findObservable = collection.find(Filters.eq("status", "A")).projection(Projections.include("item", "status", "size.uom"))
     //End Example 47
 
-    findObservable.execute().foreach(doc => {
+    findObservable.execute().foreach((doc: Document) => {
       doc.keys should contain only("_id", "item", "status", "size")
       doc.get[BsonDocument]("size").get.keys should contain only "uom"
     })
@@ -390,7 +391,7 @@ class DocumentationExampleSpec extends RequiresMongoDBISpec {
     findObservable = collection.find(Filters.eq("status", "A")).projection(Projections.exclude("size.uom"))
     //End Example 48
 
-    findObservable.execute().foreach(doc => {
+    findObservable.execute().foreach((doc: Document) => {
       doc.keys should contain only("_id", "item", "instock", "status", "size")
       doc.get[BsonDocument]("size").get.keys should contain only("h", "w")
     })
@@ -399,9 +400,10 @@ class DocumentationExampleSpec extends RequiresMongoDBISpec {
     findObservable = collection.find(Filters.eq("status", "A")).projection(Projections.include("item", "status", "instock.qty"))
     //End Example 49
 
-    findObservable.execute().foreach(doc => {
+    import scala.collection.JavaConverters._
+    findObservable.execute().foreach((doc: Document) => {
       doc.keys should contain only("_id", "item", "instock", "status")
-      doc.get[BsonArray]("instock").get.forEach(doc => doc.asInstanceOf[BsonDocument].keys should contain only "qty")
+      doc.get[BsonArray]("instock").get.asScala.foreach((doc: BsonValue) => doc.asInstanceOf[BsonDocument].keys should contain only "qty")
     })
 
     //Start Example 50
@@ -409,7 +411,7 @@ class DocumentationExampleSpec extends RequiresMongoDBISpec {
       .projection(Projections.fields(Projections.include("item", "status"), Projections.slice("instock", -1)))
     //End Example 50
 
-    findObservable.execute().foreach(doc => {
+    findObservable.execute().foreach((doc: Document) => {
       doc.keys should contain only("_id", "item", "instock", "status")
       doc.get[BsonArray]("instock").get.size() should equal(1)
     })
@@ -442,7 +444,7 @@ class DocumentationExampleSpec extends RequiresMongoDBISpec {
     ).execute()
     //End Example 52
 
-    collection.find(Filters.eq("item", "paper")).execute().foreach(doc => {
+    collection.find(Filters.eq("item", "paper")).execute().foreach((doc: Document) => {
       doc.get[BsonDocument]("size").get.get("uom") should equal(BsonString("cm"))
       doc.get[BsonString]("status").get should equal(BsonString("P"))
       doc.containsKey("lastModified") shouldBe true
@@ -454,7 +456,7 @@ class DocumentationExampleSpec extends RequiresMongoDBISpec {
     ).execute()
     //End Example 53
 
-    collection.find(Filters.lt("qty", 50)).execute().foreach(doc => {
+    collection.find(Filters.lt("qty", 50)).execute().foreach((doc: Document) => {
       doc.get[BsonDocument]("size").get.get("uom") should equal(BsonString("in"))
       doc.get[BsonString]("status").get should equal(BsonString("P"))
       doc.containsKey("lastModified") shouldBe true
@@ -467,11 +469,11 @@ class DocumentationExampleSpec extends RequiresMongoDBISpec {
     //End Example 54
 
     import org.mongodb.scala.model.Projections
-    collection.find(Filters.eq("item", "paper")).projection(Projections.excludeId()).execute().foreach(doc =>
+    collection.find(Filters.eq("item", "paper")).projection(Projections.excludeId()).execute().foreach((doc: Document) =>
       doc should equal(Document("""{ item: "paper", instock: [ { warehouse: "A", qty: 60 }, { warehouse: "B", qty: 40 } ] }"""))
     )
   }
-  
+
   it should "be able to delete" in withCollection { collection =>
 
     //Start Example 55
@@ -486,20 +488,6 @@ class DocumentationExampleSpec extends RequiresMongoDBISpec {
 
     collection.count().execute() should equal(5)
 
-    //Start Example 56
-    collection.deleteMany(Document()).execute()
-    //End Example 56
-
-    collection.count().execute() should equal(0)
-
-    collection.insertMany(Seq(
-      Document("""{ item: "journal", qty: 25, size: { h: 14, w: 21, uom: "cm" }, status: "A" }"""),
-      Document("""{ item: "notebook", qty: 50, size: { h: 8.5, w: 11, uom: "in" }, status: "A" }"""),
-      Document("""{ item: "paper", qty: 100, size: { h: 8.5, w: 11, uom: "in" }, status: "D" }"""),
-      Document("""{ item: "planner", qty: 75, size: { h: 22.85, w: 30, uom: "cm" }, status: "D" }"""),
-      Document("""{ item: "postcard", qty: 45, size: { h: 10, w: 15.25, uom: "cm" }, status: "A" }""")
-    )).execute()
-
     //Start Example 57
     import org.mongodb.scala.model.Filters
     collection.deleteMany(Filters.eq("status", "A")).execute()
@@ -512,5 +500,12 @@ class DocumentationExampleSpec extends RequiresMongoDBISpec {
     //End Example 58
 
     collection.count().execute() should equal(1)
+
+    //Start Example 56
+    collection.deleteMany(Document()).execute()
+    //End Example 56
+
+    collection.count().execute() should equal(0)
+
   }
 }
