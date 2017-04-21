@@ -131,4 +131,23 @@ object Macros {
     case class IgnoreNone() extends StaticAnnotation
   }
 
+  /**
+   * Annotations to use on case classes that are being processed by macros.
+   */
+  object Annotations {
+
+    /**
+     * Ignores any None values in the case class
+     *
+     * {{{
+     * @IgnoreNone
+     * case class Person(name: String, nickName: Option[String])
+     *
+     * Person(name = "John", nickName: None) // becomes the equivalent of: { name: "John" }
+     * }}}
+     */
+    @meta.param
+    case class IgnoreNone() extends StaticAnnotation
+  }
+
 }
