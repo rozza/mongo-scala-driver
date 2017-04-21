@@ -19,6 +19,7 @@ package org.mongodb.scala.bson.codecs
 import scala.annotation.compileTimeOnly
 import scala.language.experimental.macros
 import scala.language.implicitConversions
+import scala.annotation.{ StaticAnnotation, meta }
 
 import org.bson.codecs.Codec
 import org.bson.codecs.configuration.{ CodecProvider, CodecRegistry }
@@ -82,5 +83,24 @@ object Macros {
    */
   @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
   def createCodec[T](codecRegistry: CodecRegistry): Codec[T] = macro CaseClassCodec.createCodec[T]
+
+  /**
+   * Annotations to use on case classes that are being processed by macros.
+   */
+  object Annotations {
+
+    /**
+     * Ignores any None values in the case class
+     *
+     * {{{
+     * @IgnoreNone
+     * case class Person(name: String, nickName: Option[String])
+     *
+     * Person(name = "John", nickName: None) // becomes the equivalent of: { name: "John" }
+     * }}}
+     */
+    @meta.param
+    case class IgnoreNone() extends StaticAnnotation
+  }
 
 }
