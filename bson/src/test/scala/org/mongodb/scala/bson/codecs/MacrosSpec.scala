@@ -28,6 +28,7 @@ import org.bson.codecs.configuration.{ CodecConfigurationException, CodecProvide
 import org.bson.codecs.{ Codec, DecoderContext, EncoderContext }
 import org.bson.io.{ BasicOutputBuffer, ByteBufferBsonInput, OutputBuffer }
 
+import org.mongodb.scala.bson.codecs.Macros.Annotations.IgnoreNone
 import org.mongodb.scala.bson.codecs.Macros.createCodecProvider
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.scalatest.{ FlatSpec, Matchers }
@@ -71,6 +72,9 @@ class MacrosSpec extends FlatSpec with Matchers {
   case class OptionalValue(name: String, value: Option[String])
   case class OptionalCaseClass(name: String, value: Option[Person])
   case class OptionalRecursive(name: String, value: Option[OptionalRecursive])
+
+  @IgnoreNone
+  case class OptionalValueIgnoreNone(name: String, value: Option[String])
 
   sealed class Tree
   case class Branch(b1: Tree, b2: Tree, value: Int) extends Tree
@@ -139,6 +143,11 @@ class MacrosSpec extends FlatSpec with Matchers {
     val buffer = encode(registry.get(classOf[Document]), Document("name" -> "Bob"))
 
     decode(registry.get(classOf[OptionalValue]), buffer) should equal(OptionalValue("Bob", None))
+  }
+
+  it should "be able to round trip ignored optional values" in {
+    roundTrip(OptionalValueIgnoreNone("Bob", None), """{name: "Bob"}""", classOf[OptionalValueIgnoreNone])
+    roundTrip(OptionalValueIgnoreNone("Bob", Some("value")), """{name: "Bob", value: "value"}""", classOf[OptionalValueIgnoreNone])
   }
 
   it should "roundtrip all the supported bson types" in {

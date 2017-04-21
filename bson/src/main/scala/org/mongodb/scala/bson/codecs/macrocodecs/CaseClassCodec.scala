@@ -22,6 +22,8 @@ import scala.reflect.macros.whitebox
 import org.bson.codecs.Codec
 import org.bson.codecs.configuration.CodecRegistry
 
+import org.mongodb.scala.bson.codecs.Macros.Annotations.IgnoreNone
+
 private[codecs] object CaseClassCodec {
 
   def createCodecNoArgs[T: c.WeakTypeTag](c: whitebox.Context)(): c.Expr[Codec[T]] = {
@@ -60,6 +62,7 @@ private[codecs] object CaseClassCodec {
     def keyName(t: Type): Literal = Literal(Constant(t.typeSymbol.name.decodedName.toString))
     def keyNameTerm(t: TermName): Literal = Literal(Constant(t.toString))
 
+    val ignoreNone: Boolean = mainType.typeSymbol.annotations.exists(ann => ann.tree.tpe =:= typeOf[IgnoreNone])
     def allSubclasses(s: Symbol): Set[Symbol] = {
       val directSubClasses = s.asClass.knownDirectSubclasses
       directSubClasses ++ directSubClasses.flatMap({ s: Symbol => allSubclasses(s) })
@@ -195,10 +198,11 @@ private[codecs] object CaseClassCodec {
           f match {
             case optional if isOption(optional) => q"""
               val localVal = instanceValue.$name
-              writer.writeName($key)
               if (localVal.isDefined) {
+                writer.writeName($key)
                 this.writeFieldValue($key, writer, localVal.get, encoderContext)
-              } else {
+              } else if (!this.ignoreNone) {
+                writer.writeName($key)
                 this.writeFieldValue($key, writer, this.bsonNull, encoderContext)
               }"""
             case _ => q"""
@@ -259,6 +263,7 @@ private[codecs] object CaseClassCodec {
           val classToCaseClassMap = $classToCaseClassMap
           val classFieldTypeArgsMap = $createClassFieldTypeArgsMap
           val encoderClass = classOf[$classTypeName]
+          val ignoreNone = $ignoreNone
           def getInstance(className: String, fieldData: Map[String, Any]) = $getInstance
           def writeCaseClassData(className: String, writer: BsonWriter, value: $mainType, encoderContext: EncoderContext) = $writeValue
         }
