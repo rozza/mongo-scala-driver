@@ -22,7 +22,7 @@ import scala.reflect.macros.whitebox
 import org.bson.codecs.Codec
 import org.bson.codecs.configuration.CodecRegistry
 
-import org.mongodb.scala.bson.codecs.Macros.Annotations.IgnoreNone
+import org.mongodb.scala.bson.codecs.Macros.Annotations.{ IgnoreNone, Key }
 
 private[codecs] object CaseClassCodec {
 
@@ -72,6 +72,14 @@ private[codecs] object CaseClassCodec {
     // Data converters
     def keyName(t: Type): Literal = Literal(Constant(t.typeSymbol.name.decodedName.toString))
     def keyNameTerm(t: TermName): Literal = Literal(Constant(t.toString))
+    def storageKey(s: Symbol): TermName = {
+      s.annotations.collect {
+        case ann if ann.tree.tpe =:= typeOf[Key] => ann.tree.children.tail.collect { case t: TermName => t }
+      }.flatten.headOption getOrElse s.name.toTermName
+    }
+
+    val keyAnnotations: Map[TermName, TermName] =
+      mainType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.head.map(s => (s.name.toTermName, storageKey(s))).toMap
 
     def allSubclasses(s: Symbol): Set[Symbol] = {
       val directSubClasses = s.asClass.knownDirectSubclasses
@@ -208,10 +216,11 @@ private[codecs] object CaseClassCodec {
           f match {
             case optional if isOption(optional) => q"""
               val localVal = instanceValue.$name
+              println("doc Key: " + $key)
               if (localVal.isDefined) {
                 writer.writeName($key)
                 this.writeFieldValue($key, writer, localVal.get, encoderContext)
-              } else if (!this.ignoreNone) {
+              } else if (!$ignoreNone) {
                 writer.writeName($key)
                 this.writeFieldValue($key, writer, this.bsonNull, encoderContext)
               }"""
@@ -245,7 +254,7 @@ private[codecs] object CaseClassCodec {
     def fieldSetters(fields: List[(TermName, Type)]) = {
       fields.map({
         case (name, f) =>
-          val key = keyNameTerm(name)
+          val key = keyAnnotations(name)
           f match {
             case optional if isOption(optional) => q"$name = (if (fieldData.contains($key)) Option(fieldData($key)) else None).asInstanceOf[$f]"
             case _ => q"$name = fieldData($key).asInstanceOf[$f]"
@@ -273,7 +282,7 @@ private[codecs] object CaseClassCodec {
           val classToCaseClassMap = $classToCaseClassMap
           val classFieldTypeArgsMap = $createClassFieldTypeArgsMap
           val encoderClass = classOf[$classTypeName]
-          val ignoreNone = $ignoreNone
+
           def getInstance(className: String, fieldData: Map[String, Any]) = $getInstance
           def writeCaseClassData(className: String, writer: BsonWriter, value: $mainType, encoderContext: EncoderContext) = $writeValue
         }

@@ -114,6 +114,8 @@ object Macros {
 
   /**
    * Annotations to use on case classes that are being processed by macros.
+   *
+   * @since 2.1
    */
   object Annotations {
 
@@ -129,25 +131,18 @@ object Macros {
      */
     @meta.param
     case class IgnoreNone() extends StaticAnnotation
-  }
-
-  /**
-   * Annotations to use on case classes that are being processed by macros.
-   */
-  object Annotations {
 
     /**
-     * Ignores any None values in the case class
+     * Specify a different key when converting the field into Bson.
      *
      * {{{
-     * @IgnoreNone
-     * case class Person(name: String, nickName: Option[String])
-     *
-     * Person(name = "John", nickName: None) // becomes the equivalent of: { name: "John" }
+     * case class User(@Key("_id") id: String)
      * }}}
+     *
+     * @param key the field name to use when storing or reading the data from Bson.
      */
     @meta.param
-    case class IgnoreNone() extends StaticAnnotation
+    case class Key(key: String) extends StaticAnnotation
   }
 
 }

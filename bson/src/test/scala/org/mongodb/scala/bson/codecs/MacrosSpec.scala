@@ -29,8 +29,8 @@ import org.bson.codecs.configuration.{ CodecConfigurationException, CodecProvide
 import org.bson.codecs.{ Codec, DecoderContext, EncoderContext }
 import org.bson.io.{ BasicOutputBuffer, ByteBufferBsonInput, OutputBuffer }
 
-import org.mongodb.scala.bson.codecs.Macros.Annotations.IgnoreNone
 import org.mongodb.scala.bson.codecs.Macros.{ createCodecProvider, createCodecProviderIgnoreNone }
+import org.mongodb.scala.bson.codecs.Macros.Annotations.{ IgnoreNone, Key }
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.scalatest.{ FlatSpec, Matchers }
 
@@ -76,6 +76,7 @@ class MacrosSpec extends FlatSpec with Matchers {
 
   @IgnoreNone
   case class OptionalValueIgnoreNone(name: String, value: Option[String])
+  case class RenamedFields(@Key("fullName") name: String, @Key("fullAddress") address: String, @Key("same") same: String)
 
   sealed class Tree
   case class Branch(b1: Tree, b2: Tree, value: Int) extends Tree
@@ -151,6 +152,7 @@ class MacrosSpec extends FlatSpec with Matchers {
     roundTrip(OptionalValueIgnoreNone("Bob", Some("value")), """{name: "Bob", value: "value"}""", classOf[OptionalValueIgnoreNone])
   }
 
+
   it should "be able to round trip optional values, when None is ignored" in {
     roundTrip(OptionalValue("Bob", None), """{name: "Bob"}""", createCodecProviderIgnoreNone[OptionalValue]())
     roundTrip(OptionalValue("Bob", Some("value")), """{name: "Bob", value: "value"}""", createCodecProviderIgnoreNone[OptionalValue]())
@@ -166,6 +168,10 @@ class MacrosSpec extends FlatSpec with Matchers {
       OptionalRecursive("Bob", Some(OptionalRecursive("Charlie", None))),
       """{name: "Bob", value: {name: "Charlie"}}""", createCodecProviderIgnoreNone[OptionalRecursive]()
     )
+  }
+
+  it should "be able to handle renamed fields" in {
+    roundTrip(RenamedFields("Bob", "Address", "abc"), """{fullName: "Bob", fullAddress: "Address", same: "abc"}""", classOf[RenamedFields])
   }
 
   it should "roundtrip all the supported bson types" in {
