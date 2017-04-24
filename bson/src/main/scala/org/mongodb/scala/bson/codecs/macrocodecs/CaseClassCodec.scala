@@ -72,14 +72,18 @@ private[codecs] object CaseClassCodec {
     // Data converters
     def keyName(t: Type): Literal = Literal(Constant(t.typeSymbol.name.decodedName.toString))
     def keyNameTerm(t: TermName): Literal = Literal(Constant(t.toString))
-    def storageKey(s: Symbol): TermName = {
-      s.annotations.collect {
-        case ann if ann.tree.tpe =:= typeOf[Key] => ann.tree.children.tail.collect { case t: TermName => t }
-      }.flatten.headOption getOrElse s.name.toTermName
+    def storageKey(s: Symbol): (String, String) = {
+      val keyName = s.name.toTermName.toString
+      val storageName: String = s.annotations.collect {
+        case ann if ann.tree.tpe =:= typeOf[Key] => ann.tree.children.tail
+          .collect {
+            case l: Literal => l.value.value
+          }.collect {
+            case value: String => value
+          }
+      }.flatten.headOption getOrElse keyName
+      (keyName, storageName)
     }
-
-    val keyAnnotations: Map[TermName, TermName] =
-      mainType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.head.map(s => (s.name.toTermName, storageKey(s))).toMap
 
     def allSubclasses(s: Symbol): Set[Symbol] = {
       val directSubClasses = s.asClass.knownDirectSubclasses
@@ -90,6 +94,11 @@ private[codecs] object CaseClassCodec {
     val knownTypes = (mainType +: subClasses).reverse
     def fields: Map[Type, List[(TermName, Type)]] = knownTypes.map(t => (t, t.members.sorted.filter(_.isMethod).map(_.asMethod).filter(_.isGetter)
       .map(m => (m.name, m.returnType.asSeenFrom(t, t.typeSymbol))))).toMap
+
+    val keyAnnotations: Map[String, Map[String, String]] = {
+      knownTypes.map(t => (t.typeSymbol.name.toString,
+        t.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.head.map(s => storageKey(s)).toMap)).toMap
+    }
 
     // Primitives type map
     val primitiveTypesMap: Map[Type, Type] = Map(
@@ -185,6 +194,20 @@ private[codecs] object CaseClassCodec {
     }
 
     /**
+     * Creates a `Map[String, Class[_]]` mapping the case class name and the type.
+     *
+     * @return the case classes map
+     */
+    def keysMap = {
+      val setKeys = keyAnnotations.map(t => q"keysMap += $t")
+      q"""
+        val keysMap = mutable.Map[String, String]()
+        ..$setKeys
+        keysMap.toMap
+      """
+    }
+
+    /**
      * Creates a `Map[Class[_], Boolean]` mapping field types to a boolean representing if they are a case class.
      *
      * @return the class to case classes map
@@ -216,7 +239,6 @@ private[codecs] object CaseClassCodec {
           f match {
             case optional if isOption(optional) => q"""
               val localVal = instanceValue.$name
-              println("doc Key: " + $key)
               if (localVal.isDefined) {
                 writer.writeName($key)
                 this.writeFieldValue($key, writer, localVal.get, encoderContext)
@@ -254,7 +276,7 @@ private[codecs] object CaseClassCodec {
     def fieldSetters(fields: List[(TermName, Type)]) = {
       fields.map({
         case (name, f) =>
-          val key = keyAnnotations(name)
+          val key = keyAnnotations(name.toString)
           f match {
             case optional if isOption(optional) => q"$name = (if (fieldData.contains($key)) Option(fieldData($key)) else None).asInstanceOf[$f]"
             case _ => q"$name = fieldData($key).asInstanceOf[$f]"
@@ -278,6 +300,8 @@ private[codecs] object CaseClassCodec {
         import org.mongodb.scala.bson.codecs.macrocodecs.MacroCodec
 
         case class $codecName(codecRegistry: CodecRegistry) extends MacroCodec[$classTypeName] {
+          val keysMap = $keysMap
+          println(keysMap)
           val caseClassesMap = $caseClassesMap
           val classToCaseClassMap = $classToCaseClassMap
           val classFieldTypeArgsMap = $createClassFieldTypeArgsMap

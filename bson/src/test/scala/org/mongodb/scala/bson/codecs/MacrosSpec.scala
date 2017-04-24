@@ -152,7 +152,6 @@ class MacrosSpec extends FlatSpec with Matchers {
     roundTrip(OptionalValueIgnoreNone("Bob", Some("value")), """{name: "Bob", value: "value"}""", classOf[OptionalValueIgnoreNone])
   }
 
-
   it should "be able to round trip optional values, when None is ignored" in {
     roundTrip(OptionalValue("Bob", None), """{name: "Bob"}""", createCodecProviderIgnoreNone[OptionalValue]())
     roundTrip(OptionalValue("Bob", Some("value")), """{name: "Bob", value: "value"}""", createCodecProviderIgnoreNone[OptionalValue]())
