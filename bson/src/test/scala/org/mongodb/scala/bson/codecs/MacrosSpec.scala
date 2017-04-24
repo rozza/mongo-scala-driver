@@ -21,6 +21,7 @@ import java.util
 import java.util.Date
 
 import scala.collection.JavaConverters._
+import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
 import org.bson._
@@ -29,7 +30,7 @@ import org.bson.codecs.{ Codec, DecoderContext, EncoderContext }
 import org.bson.io.{ BasicOutputBuffer, ByteBufferBsonInput, OutputBuffer }
 
 import org.mongodb.scala.bson.codecs.Macros.Annotations.IgnoreNone
-import org.mongodb.scala.bson.codecs.Macros.createCodecProvider
+import org.mongodb.scala.bson.codecs.Macros.{ createCodecProvider, createCodecProviderIgnoreNone }
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.scalatest.{ FlatSpec, Matchers }
 
@@ -150,6 +151,23 @@ class MacrosSpec extends FlatSpec with Matchers {
     roundTrip(OptionalValueIgnoreNone("Bob", Some("value")), """{name: "Bob", value: "value"}""", classOf[OptionalValueIgnoreNone])
   }
 
+  it should "be able to round trip optional values, when None is ignored" in {
+    roundTrip(OptionalValue("Bob", None), """{name: "Bob"}""", createCodecProviderIgnoreNone[OptionalValue]())
+    roundTrip(OptionalValue("Bob", Some("value")), """{name: "Bob", value: "value"}""", createCodecProviderIgnoreNone[OptionalValue]())
+    roundTrip(OptionalCaseClass("Bob", None), """{name: "Bob"}""", createCodecProviderIgnoreNone[OptionalCaseClass]())
+    roundTrip(
+      OptionalCaseClass("Bob", Some(Person("Charlie", "Jones"))),
+      """{name: "Bob", value: {firstName: "Charlie", lastName: "Jones"}}""",
+      createCodecProviderIgnoreNone[OptionalCaseClass](), createCodecProviderIgnoreNone[Person]()
+    )
+
+    roundTrip(OptionalRecursive("Bob", None), """{name: "Bob"}""", createCodecProviderIgnoreNone[OptionalRecursive]())
+    roundTrip(
+      OptionalRecursive("Bob", Some(OptionalRecursive("Charlie", None))),
+      """{name: "Bob", value: {name: "Charlie"}}""", createCodecProviderIgnoreNone[OptionalRecursive]()
+    )
+  }
+
   it should "roundtrip all the supported bson types" in {
     val value =
       roundTrip(
@@ -267,6 +285,6 @@ class MacrosSpec extends FlatSpec with Matchers {
     codec.decode(reader, DecoderContext.builder().build())
   }
 
-  val documentCodec = DEFAULT_CODEC_REGISTRY.get(classOf[Document])
+  val documentCodec: Codec[Document] = DEFAULT_CODEC_REGISTRY.get(classOf[Document])
 
 }

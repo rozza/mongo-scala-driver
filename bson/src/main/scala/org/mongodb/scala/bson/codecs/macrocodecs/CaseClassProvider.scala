@@ -20,12 +20,33 @@ import scala.reflect.macros.whitebox
 
 import org.bson.codecs.configuration.{ CodecProvider, CodecRegistry }
 
+import org.mongodb.scala.bson.codecs.Macros.Annotations.IgnoreNone
+
 private[codecs] object CaseClassProvider {
 
-  def createCaseClassProviderWithClass[T: c.WeakTypeTag](c: whitebox.Context)(clazz: c.Expr[Class[T]]): c.Expr[CodecProvider] =
-    createCaseClassProvider[T](c)().asInstanceOf[c.Expr[CodecProvider]]
+  def createCodecProviderNoIgnoreNone[T: c.WeakTypeTag](c: whitebox.Context)(): c.Expr[CodecProvider] = {
+    import c.universe._
+    val ignoreNone: Boolean = weakTypeOf[T].typeSymbol.annotations.exists(ann => ann.tree.tpe =:= typeOf[IgnoreNone])
+    createCodecProvider[T](c)(c.Expr[Boolean](q"$ignoreNone")).asInstanceOf[c.Expr[CodecProvider]]
+  }
 
-  def createCaseClassProvider[T: c.WeakTypeTag](c: whitebox.Context)(): c.Expr[CodecProvider] = {
+  def createCodecProviderWithClassNoIgnoreNone[T: c.WeakTypeTag](c: whitebox.Context)(clazz: c.Expr[Class[T]]): c.Expr[CodecProvider] = {
+    import c.universe._
+    val ignoreNone: Boolean = weakTypeOf[T].typeSymbol.annotations.exists(ann => ann.tree.tpe =:= typeOf[IgnoreNone])
+    createCodecProvider[T](c)(c.Expr[Boolean](q"$ignoreNone")).asInstanceOf[c.Expr[CodecProvider]]
+  }
+
+  def createCodecProviderWithClassIgnoreNone[T: c.WeakTypeTag](c: whitebox.Context)(clazz: c.Expr[Class[T]]): c.Expr[CodecProvider] = {
+    import c.universe._
+    createCodecProvider[T](c)(c.Expr[Boolean](q"true")).asInstanceOf[c.Expr[CodecProvider]]
+  }
+
+  def createCodecProviderIgnoreNone[T: c.WeakTypeTag](c: whitebox.Context)(): c.Expr[CodecProvider] = {
+    import c.universe._
+    createCodecProvider[T](c)(c.Expr[Boolean](q"true")).asInstanceOf[c.Expr[CodecProvider]]
+  }
+
+  def createCodecProvider[T: c.WeakTypeTag](c: whitebox.Context)(ignoreNone: c.Expr[Boolean]): c.Expr[CodecProvider] = {
     import c.universe._
 
     // Declared type
@@ -34,7 +55,7 @@ private[codecs] object CaseClassProvider {
 
     // Names
     def exprCodecRegistry = c.Expr[CodecRegistry](q"codecRegistry")
-    def codec = CaseClassCodec.createCodec[T](c)(exprCodecRegistry)
+    def codec = CaseClassCodec.createCodec[T](c)(exprCodecRegistry, ignoreNone)
 
     c.Expr[CodecProvider](
       q"""
