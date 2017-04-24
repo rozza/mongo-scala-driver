@@ -53,7 +53,7 @@ object Macros {
    * @return the CodecProvider for the case class
    */
   @compileTimeOnly("Creating a CodecProvider utilises Macros and must be run at compile time.")
-  def createCodecProvider[T](): CodecProvider = macro CaseClassProvider.createCaseClassProvider[T]
+  def createCodecProvider[T](): CodecProvider = macro CaseClassProvider.createCodecProviderNoIgnoreNone[T]
 
   /**
    * Creates a CodecProvider for a case class using the given class to represent the case class
@@ -63,7 +63,26 @@ object Macros {
    * @return the CodecProvider for the case class
    */
   @compileTimeOnly("Creating a CodecProvider utilises Macros and must be run at compile time.")
-  implicit def createCodecProvider[T](clazz: Class[T]): CodecProvider = macro CaseClassProvider.createCaseClassProviderWithClass[T]
+  implicit def createCodecProvider[T](clazz: Class[T]): CodecProvider = macro CaseClassProvider.createCodecProviderWithClassNoIgnoreNone[T]
+
+  /**
+   * Creates a CodecProvider for a case class that ignores any `None` values
+   *
+   * @tparam T the case class to create a Codec from
+   * @return the CodecProvider for the case class
+   */
+  @compileTimeOnly("Creating a CodecProvider utilises Macros and must be run at compile time.")
+  def createCodecProviderIgnoreNone[T](): CodecProvider = macro CaseClassProvider.createCodecProviderIgnoreNone[T]
+
+  /**
+   * Creates a CodecProvider for a case class that ignores any `None` values, using the given class to represent the case class
+   *
+   * @param clazz the clazz that is the case class
+   * @tparam T the case class to create a Codec from
+   * @return the CodecProvider for the case class
+   */
+  @compileTimeOnly("Creating a CodecProvider utilises Macros and must be run at compile time.")
+  def createCodecProviderIgnoreNone[T](clazz: Class[T]): CodecProvider = macro CaseClassProvider.createCodecProviderWithClassIgnoreNone[T]
 
   /**
    * Creates a Codec for a case class
@@ -72,7 +91,16 @@ object Macros {
    * @return the Codec for the case class
    */
   @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
-  def createCodec[T](): Codec[T] = macro CaseClassCodec.createCodecNoArgs[T]
+  def createCodec[T](): Codec[T] = macro CaseClassCodec.createCodecNoCodecRegistryNoIgnoreNone[T]
+
+  /**
+   * Creates a Codec for a case class
+   *
+   * @tparam T the case class to create a Codec from
+   * @return the Codec for the case class
+   */
+  @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
+  def createCodec[T](ignoreNone: Boolean): Codec[T] = macro CaseClassCodec.createCodecNoCodecRegistry[T]
 
   /**
    * Creates a Codec for a case class
@@ -82,7 +110,7 @@ object Macros {
    * @return the Codec for the case class
    */
   @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
-  def createCodec[T](codecRegistry: CodecRegistry): Codec[T] = macro CaseClassCodec.createCodec[T]
+  def createCodec[T](codecRegistry: CodecRegistry): Codec[T] = macro CaseClassCodec.createCodecIgnoreNone[T]
 
   /**
    * Annotations to use on case classes that are being processed by macros.

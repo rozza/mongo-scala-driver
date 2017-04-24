@@ -26,18 +26,29 @@ import org.mongodb.scala.bson.codecs.Macros.Annotations.IgnoreNone
 
 private[codecs] object CaseClassCodec {
 
-  def createCodecNoArgs[T: c.WeakTypeTag](c: whitebox.Context)(): c.Expr[Codec[T]] = {
+  def createCodecNoCodecRegistryNoIgnoreNone[T: c.WeakTypeTag](c: whitebox.Context)(): c.Expr[Codec[T]] = {
+    import c.universe._
+    createCodecNoCodecRegistry[T](c)(c.Expr[Boolean](q"false")).asInstanceOf[c.Expr[Codec[T]]]
+  }
+
+  def createCodecNoCodecRegistry[T: c.WeakTypeTag](c: whitebox.Context)(ignoreNone: c.Expr[Boolean]): c.Expr[Codec[T]] = {
     import c.universe._
     createCodec[T](c)(c.Expr[CodecRegistry](
       q"""
          import org.mongodb.scala.bson.codecs.DEFAULT_CODEC_REGISTRY
          DEFAULT_CODEC_REGISTRY
       """
-    )).asInstanceOf[c.Expr[Codec[T]]]
+    ), ignoreNone).asInstanceOf[c.Expr[Codec[T]]]
+  }
+
+  def createCodecIgnoreNone[T: c.WeakTypeTag](c: whitebox.Context)(codecRegistry: c.Expr[CodecRegistry]): c.Expr[Codec[T]] = {
+    import c.universe._
+    val ignoreNone: Boolean = weakTypeOf[T].typeSymbol.annotations.exists(ann => ann.tree.tpe =:= typeOf[IgnoreNone])
+    createCodec[T](c)(codecRegistry, c.Expr[Boolean](q"$ignoreNone")).asInstanceOf[c.Expr[Codec[T]]]
   }
 
   // scalastyle:off method.length
-  def createCodec[T: c.WeakTypeTag](c: whitebox.Context)(codecRegistry: c.Expr[CodecRegistry]): c.Expr[Codec[T]] = {
+  def createCodec[T: c.WeakTypeTag](c: whitebox.Context)(codecRegistry: c.Expr[CodecRegistry], ignoreNone: c.Expr[Boolean]): c.Expr[Codec[T]] = {
     import c.universe._
 
     // Declared types
@@ -62,7 +73,6 @@ private[codecs] object CaseClassCodec {
     def keyName(t: Type): Literal = Literal(Constant(t.typeSymbol.name.decodedName.toString))
     def keyNameTerm(t: TermName): Literal = Literal(Constant(t.toString))
 
-    val ignoreNone: Boolean = mainType.typeSymbol.annotations.exists(ann => ann.tree.tpe =:= typeOf[IgnoreNone])
     def allSubclasses(s: Symbol): Set[Symbol] = {
       val directSubClasses = s.asClass.knownDirectSubclasses
       directSubClasses ++ directSubClasses.flatMap({ s: Symbol => allSubclasses(s) })
