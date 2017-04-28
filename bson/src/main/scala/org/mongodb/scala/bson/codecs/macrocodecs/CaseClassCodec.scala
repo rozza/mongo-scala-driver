@@ -22,33 +22,40 @@ import scala.reflect.macros.whitebox
 import org.bson.codecs.Codec
 import org.bson.codecs.configuration.CodecRegistry
 
-import org.mongodb.scala.bson.codecs.Macros.Annotations.IgnoreNone
-
 private[codecs] object CaseClassCodec {
 
-  def createCodecNoCodecRegistryNoIgnoreNone[T: c.WeakTypeTag](c: whitebox.Context)(): c.Expr[Codec[T]] = {
+  def createCodecDefaultCodecRegistryEncodeNone[T: c.WeakTypeTag](c: whitebox.Context)(): c.Expr[Codec[T]] = {
     import c.universe._
-    createCodecNoCodecRegistry[T](c)(c.Expr[Boolean](q"false")).asInstanceOf[c.Expr[Codec[T]]]
+    createCodecDefaultCodecRegistry[T](c)(c.Expr[Boolean](q"true"))
   }
 
-  def createCodecNoCodecRegistry[T: c.WeakTypeTag](c: whitebox.Context)(ignoreNone: c.Expr[Boolean]): c.Expr[Codec[T]] = {
+  def createCodecEncodeNone[T: c.WeakTypeTag](c: whitebox.Context)(codecRegistry: c.Expr[CodecRegistry]): c.Expr[Codec[T]] = {
+    import c.universe._
+    createCodec[T](c)(codecRegistry, c.Expr[Boolean](q"true"))
+  }
+
+  def createCodecDefaultCodecRegistryIgnoreNone[T: c.WeakTypeTag](c: whitebox.Context)(): c.Expr[Codec[T]] = {
+    import c.universe._
+    createCodecDefaultCodecRegistry[T](c)(c.Expr[Boolean](q"false"))
+  }
+
+  def createCodecIgnoreNone[T: c.WeakTypeTag](c: whitebox.Context)(codecRegistry: c.Expr[CodecRegistry]): c.Expr[Codec[T]] = {
+    import c.universe._
+    createCodec[T](c)(codecRegistry, c.Expr[Boolean](q"false"))
+  }
+
+  def createCodecDefaultCodecRegistry[T: c.WeakTypeTag](c: whitebox.Context)(encodeNone: c.Expr[Boolean]): c.Expr[Codec[T]] = {
     import c.universe._
     createCodec[T](c)(c.Expr[CodecRegistry](
       q"""
          import org.mongodb.scala.bson.codecs.DEFAULT_CODEC_REGISTRY
          DEFAULT_CODEC_REGISTRY
       """
-    ), ignoreNone).asInstanceOf[c.Expr[Codec[T]]]
-  }
-
-  def createCodecIgnoreNone[T: c.WeakTypeTag](c: whitebox.Context)(codecRegistry: c.Expr[CodecRegistry]): c.Expr[Codec[T]] = {
-    import c.universe._
-    val ignoreNone: Boolean = weakTypeOf[T].typeSymbol.annotations.exists(ann => ann.tree.tpe =:= typeOf[IgnoreNone])
-    createCodec[T](c)(codecRegistry, c.Expr[Boolean](q"$ignoreNone")).asInstanceOf[c.Expr[Codec[T]]]
+    ), encodeNone)
   }
 
   // scalastyle:off method.length
-  def createCodec[T: c.WeakTypeTag](c: whitebox.Context)(codecRegistry: c.Expr[CodecRegistry], ignoreNone: c.Expr[Boolean]): c.Expr[Codec[T]] = {
+  def createCodec[T: c.WeakTypeTag](c: whitebox.Context)(codecRegistry: c.Expr[CodecRegistry], encodeNone: c.Expr[Boolean]): c.Expr[Codec[T]] = {
     import c.universe._
 
     // Declared types
@@ -211,7 +218,7 @@ private[codecs] object CaseClassCodec {
               if (localVal.isDefined) {
                 writer.writeName($key)
                 this.writeFieldValue($key, writer, localVal.get, encoderContext)
-              } else if (!this.ignoreNone) {
+              } else if ($encodeNone) {
                 writer.writeName($key)
                 this.writeFieldValue($key, writer, this.bsonNull, encoderContext)
               }"""
@@ -273,7 +280,6 @@ private[codecs] object CaseClassCodec {
           val classToCaseClassMap = $classToCaseClassMap
           val classFieldTypeArgsMap = $createClassFieldTypeArgsMap
           val encoderClass = classOf[$classTypeName]
-          val ignoreNone = $ignoreNone
           def getInstance(className: String, fieldData: Map[String, Any]) = $getInstance
           def writeCaseClassData(className: String, writer: BsonWriter, value: $mainType, encoderContext: EncoderContext) = $writeValue
         }

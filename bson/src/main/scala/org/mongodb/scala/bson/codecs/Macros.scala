@@ -19,7 +19,6 @@ package org.mongodb.scala.bson.codecs
 import scala.annotation.compileTimeOnly
 import scala.language.experimental.macros
 import scala.language.implicitConversions
-import scala.annotation.{ StaticAnnotation, meta }
 
 import org.bson.codecs.Codec
 import org.bson.codecs.configuration.{ CodecProvider, CodecRegistry }
@@ -53,7 +52,7 @@ object Macros {
    * @return the CodecProvider for the case class
    */
   @compileTimeOnly("Creating a CodecProvider utilises Macros and must be run at compile time.")
-  def createCodecProvider[T](): CodecProvider = macro CaseClassProvider.createCodecProviderNoIgnoreNone[T]
+  def createCodecProvider[T](): CodecProvider = macro CaseClassProvider.createCodecProviderEncodeNone[T]
 
   /**
    * Creates a CodecProvider for a case class using the given class to represent the case class
@@ -63,13 +62,14 @@ object Macros {
    * @return the CodecProvider for the case class
    */
   @compileTimeOnly("Creating a CodecProvider utilises Macros and must be run at compile time.")
-  implicit def createCodecProvider[T](clazz: Class[T]): CodecProvider = macro CaseClassProvider.createCodecProviderWithClassNoIgnoreNone[T]
+  implicit def createCodecProvider[T](clazz: Class[T]): CodecProvider = macro CaseClassProvider.createCodecProviderWithClassEncodeNone[T]
 
   /**
    * Creates a CodecProvider for a case class that ignores any `None` values
    *
    * @tparam T the case class to create a Codec from
    * @return the CodecProvider for the case class
+   * @since 2.1
    */
   @compileTimeOnly("Creating a CodecProvider utilises Macros and must be run at compile time.")
   def createCodecProviderIgnoreNone[T](): CodecProvider = macro CaseClassProvider.createCodecProviderIgnoreNone[T]
@@ -80,6 +80,7 @@ object Macros {
    * @param clazz the clazz that is the case class
    * @tparam T the case class to create a Codec from
    * @return the CodecProvider for the case class
+   * @since 2.1
    */
   @compileTimeOnly("Creating a CodecProvider utilises Macros and must be run at compile time.")
   def createCodecProviderIgnoreNone[T](clazz: Class[T]): CodecProvider = macro CaseClassProvider.createCodecProviderWithClassIgnoreNone[T]
@@ -91,16 +92,7 @@ object Macros {
    * @return the Codec for the case class
    */
   @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
-  def createCodec[T](): Codec[T] = macro CaseClassCodec.createCodecNoCodecRegistryNoIgnoreNone[T]
-
-  /**
-   * Creates a Codec for a case class
-   *
-   * @tparam T the case class to create a Codec from
-   * @return the Codec for the case class
-   */
-  @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
-  def createCodec[T](ignoreNone: Boolean): Codec[T] = macro CaseClassCodec.createCodecNoCodecRegistry[T]
+  def createCodec[T](): Codec[T] = macro CaseClassCodec.createCodecDefaultCodecRegistryEncodeNone[T]
 
   /**
    * Creates a Codec for a case class
@@ -110,25 +102,27 @@ object Macros {
    * @return the Codec for the case class
    */
   @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
-  def createCodec[T](codecRegistry: CodecRegistry): Codec[T] = macro CaseClassCodec.createCodecIgnoreNone[T]
+  def createCodec[T](codecRegistry: CodecRegistry): Codec[T] = macro CaseClassCodec.createCodecEncodeNone[T]
 
   /**
-   * Annotations to use on case classes that are being processed by macros.
+   * Creates a Codec for a case class
+   *
+   * @tparam T the case class to create a Codec from
+   * @return the Codec for the case class
+   * @since 2.1
    */
-  object Annotations {
+  @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
+  def createCodecIgnoreNone[T](): Codec[T] = macro CaseClassCodec.createCodecDefaultCodecRegistryIgnoreNone[T]
 
-    /**
-     * Ignores any None values in the case class
-     *
-     * {{{
-     * @IgnoreNone
-     * case class Person(name: String, nickName: Option[String])
-     *
-     * Person(name = "John", nickName: None) // becomes the equivalent of: { name: "John" }
-     * }}}
-     */
-    @meta.param
-    case class IgnoreNone() extends StaticAnnotation
-  }
+  /**
+   * Creates a Codec for a case class
+   *
+   * @param codecRegistry the Codec Registry to use
+   * @tparam T the case class to create a codec from
+   * @return the Codec for the case class
+   * @since 2.1
+   */
+  @compileTimeOnly("Creating a Codec utilises Macros and must be run at compile time.")
+  def createCodecIgnoreNone[T](codecRegistry: CodecRegistry): Codec[T] = macro CaseClassCodec.createCodecIgnoreNone[T]
 
 }
