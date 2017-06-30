@@ -16,13 +16,20 @@
 
 package org.mongodb.scala.internal
 
+import java.util.concurrent.CountDownLatch
+
+import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
 import org.mongodb.scala._
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.prop.TableDrivenPropertyChecks
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{FlatSpec, Matchers}
 
-class ObservableImplementationSpec extends FlatSpec with Matchers with TableDrivenPropertyChecks {
+class ObservableImplementationSpec extends FlatSpec with ScalaFutures with Matchers with TableDrivenPropertyChecks {
+
+  implicit val defaultPatience = PatienceConfig(timeout = Span(20, Seconds), interval = Span(5, Millis))
 
   "Observables" should "call onCompleted once all results are consumed" in {
     forAll(happyObservables) {
@@ -41,21 +48,20 @@ class ObservableImplementationSpec extends FlatSpec with Matchers with TableDriv
     }
   }
 
-  it should "Consuming observables should handl over requesting observables as expected" in {
-    forAll(overRequestingObservables) {
-      (observable: Observable[Int], observer: TestObserver[Int], expected: Int) =>
-        {
-          observable.subscribe(observer)
+  it should "work" in {
+    val observable = FlatMapObservable[Int, Int](TestObservable[Int](1 to 1000), (i: Int) => TestObservable[Int](Seq(i)))
+    val observer = TestObserver[Int]()
 
-          val subscription = observer.subscription.get
-          subscription.request(1000)
+    observable.subscribe(observer)
 
-          subscription.isUnsubscribed should equal(false)
-          observer.error should equal(None)
-          observer.completed should equal(true)
-          observer.results.size should equal(expected)
-        }
-    }
+    val subscription = observer.subscription.get
+    subscription.request(1)
+    subscription.request(1000)
+
+    subscription.isUnsubscribed should equal(false)
+    observer.results should equal (1 to 1000 toList)
+    observer.error should equal(None)
+    observer.completed should equal(true)
   }
 
   it should "be well behaved when and call onError if the Observable errors" in {
@@ -118,27 +124,7 @@ class ObservableImplementationSpec extends FlatSpec with Matchers with TableDriv
 
   it should "propagate errors from the observer" in {
     forAll(happyObservables) {
-      (observable: Observable[Int], observer: TestObserver[Int]) =>
-        {
-          testObserver[Int](observable, observer)
-        }
-    }
-  }
-
-  def testObserver[I](observable: Observable[I], observer: TestObserver[I]): Unit = {
-    val failObserver = TestObserver[I](new Observer[I] {
-      override def onError(throwable: Throwable): Unit = {}
-
-      override def onSubscribe(subscription: Subscription): Unit = {}
-
-      override def onComplete(): Unit = {}
-
-      override def onNext(tResult: I): Unit = throw new Throwable("Failed action")
-    })
-
-    observable.subscribe(failObserver)
-    intercept[Throwable] {
-      observer.subscription.get.request(10)
+      (observable: Observable[Int], observer: TestObserver[Int]) => testObserver[Int](observable, observer)
     }
   }
 
@@ -205,6 +191,14 @@ class ObservableImplementationSpec extends FlatSpec with Matchers with TableDriv
     }
   }
 
+  it should "not stackoverflow when flatMapping over large Observables" in {
+    val ctx = ExecutionContext.global
+    val future = Observable(1 to 5000).flatMap(i => Observable(Seq(i))).toFuture()
+    val test = future.futureValue.size
+    println(test)
+    future.futureValue.size should equal(5000)
+  }
+
   val failOn = 30
 
   def failingObservables =
@@ -253,57 +247,20 @@ class ObservableImplementationSpec extends FlatSpec with Matchers with TableDriv
       ZipObservable[Int, Int](TestObservable[Int](), TestObservable[Int](1 to 50))
     )
 
-  private def overRequestingObservables =
-    Table(
-      ("observable", "observer", "expected"),
-      (
-        FlatMapObservable[Int, Int](OverRequestedObservable(TestObservable[Int](1 to 10)), (i: Int) => TestObservable[Int](1 to 10)),
-        TestObserver[Int](), 100
-      ),
-      (RecoverWithObservable[Int, Int](
-        TestObservable[Int](1 to 10, failOn = 1),
-        { case t => OverRequestedObservable(TestObservable[Int](1 to 10)) }
-      ), TestObserver[Int](), 10)
-    )
+  private def testObserver[I](observable: Observable[I], observer: TestObserver[I]): Unit = {
+    val failObserver = TestObserver[I](new Observer[I] {
+      override def onError(throwable: Throwable): Unit = {}
 
-  case class OverRequestedObservable(delegate: TestObservable[Int] = TestObservable[Int]()) extends Observable[Int] {
+      override def onSubscribe(subscription: Subscription): Unit = {}
 
-    var totalRequested = 0L
-    override def subscribe(observer: Observer[_ >: Int]): Unit = {
-      delegate.subscribe(SubscriptionCheckingObserver(
-        new Observer[Int] {
+      override def onComplete(): Unit = {}
 
-          var completed = false
-          override def onError(throwable: Throwable): Unit = observer.onError(throwable)
+      override def onNext(tResult: I): Unit = throw new Throwable("Failed action")
+    })
 
-          override def onSubscribe(subscription: Subscription): Unit = {
-            val masterSub = new Subscription() {
-              override def isUnsubscribed: Boolean = subscription.isUnsubscribed
-
-              override def request(n: Long): Unit = {
-                if (!completed) {
-                  var demand = n + 1
-                  if (demand < 0) demand = Long.MaxValue
-                  totalRequested += demand
-                  subscription.request(demand)
-                }
-              }
-              override def unsubscribe(): Unit = subscription.unsubscribe()
-            }
-            observer.onSubscribe(masterSub)
-          }
-
-          override def onComplete(): Unit = {
-            completed = true
-            observer.onComplete()
-          }
-
-          override def onNext(tResult: Int): Unit = {
-            observer.onNext(tResult)
-          }
-        }
-      ))
+    observable.subscribe(failObserver)
+    intercept[Throwable] {
+      observer.subscription.get.request(10)
     }
   }
-
 }

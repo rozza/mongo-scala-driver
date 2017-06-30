@@ -16,6 +16,11 @@
 
 package org.mongodb.scala.internal
 
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicBoolean
+
+import scala.concurrent.ExecutionContext
+
 import org.mongodb.scala._
 
 private[scala] case class FlatMapObservable[T, S](observable: Observable[T], f: T => Observable[S]) extends Observable[S] {
@@ -24,7 +29,7 @@ private[scala] case class FlatMapObservable[T, S](observable: Observable[T], f: 
   override def subscribe(observer: Observer[_ >: S]): Unit = {
     observable.subscribe(SubscriptionCheckingObserver(
       new Observer[T] {
-
+        private val ctx = ExecutionContext.global
         @volatile
         private var outerSubscription: Option[Subscription] = None
         @volatile
@@ -33,6 +38,9 @@ private[scala] case class FlatMapObservable[T, S](observable: Observable[T], f: 
         private var demand: Long = 0
         @volatile
         private var onCompleteCalled: Boolean = false
+        @volatile
+        private var completed: Boolean = false
+        private var inflight: AtomicBoolean = new AtomicBoolean()
 
         override def onSubscribe(subscription: Subscription): Unit = {
 
@@ -53,18 +61,14 @@ private[scala] case class FlatMapObservable[T, S](observable: Observable[T], f: 
           observer.onSubscribe(masterSub)
         }
 
-        override def onComplete(): Unit = {
-          if (!onCompleteCalled) {
-            onCompleteCalled = true
-            if (nestedSubscription.isEmpty) observer.onComplete()
-          }
-        }
+        override def onComplete(): Unit = checkCallOnComplete()
 
         override def onError(throwable: Throwable): Unit = observer.onError(throwable)
 
         override def onNext(tResult: T): Unit = {
-          f(tResult).subscribe(
+          f(tResult).observeOn(ctx).subscribe(
             new Observer[S]() {
+
               override def onError(throwable: Throwable): Unit = {
                 nestedSubscription = None
                 observer.onError(throwable)
@@ -78,7 +82,7 @@ private[scala] case class FlatMapObservable[T, S](observable: Observable[T], f: 
               override def onComplete(): Unit = {
                 nestedSubscription = None
                 onCompleteCalled match {
-                  case true => observer.onComplete()
+                  case true => checkCallOnComplete()
                   case false if demand > 0 =>
                     addDemand(-1) // reduce demand by 1 as it will be incremented by the outerSubscription
                     outerSubscription.foreach(_.request(1))
@@ -92,6 +96,16 @@ private[scala] case class FlatMapObservable[T, S](observable: Observable[T], f: 
               }
             }
           )
+        }
+
+        private def checkCallOnComplete(): Unit = {
+          this.synchronized {
+            onCompleteCalled = true
+            if (!completed && nestedSubscription.isEmpty) {
+              completed = true
+              observer.onComplete()
+            }
+          }
         }
 
         /**

@@ -44,16 +44,31 @@ case class TestObservable[A](
   override def subscribe(observer: Observer[_ >: A]): Unit = {
     delegate.subscribe(
       new Observer[A] {
+        @volatile
         var failed = false
+        @volatile
         var subscription: Option[Subscription] = None
-        override def onError(throwable: Throwable): Unit = observer.onError(throwable)
+        @volatile
+        var onErrorCalled: Boolean = false
+        @volatile
+        var onCompleteCalled: Boolean = false
+
+        override def onError(throwable: Throwable): Unit = {
+          if (onErrorCalled) throw new IllegalStateException("onError already called")
+          onErrorCalled = true
+          observer.onError(throwable)
+        }
 
         override def onSubscribe(sub: Subscription): Unit = {
           subscription = Some(sub)
           observer.onSubscribe(sub)
         }
 
-        override def onComplete(): Unit = if (!failed) observer.onComplete()
+        override def onComplete(): Unit = {
+          if (onCompleteCalled) throw new IllegalStateException("onComplete already called")
+          onCompleteCalled = true
+          if (!failed) observer.onComplete()
+        }
 
         override def onNext(tResult: A): Unit = {
           if (!failed) {

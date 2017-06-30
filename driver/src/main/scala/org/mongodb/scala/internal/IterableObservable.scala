@@ -27,6 +27,8 @@ private[scala] case class IterableObservable[A](from: Iterable[A]) extends Obser
         private var left: Iterable[A] = from
         @volatile
         private var subscribed: Boolean = true
+        @volatile
+        private var completed: Boolean = false
 
         override def isUnsubscribed: Boolean = !subscribed
 
@@ -40,7 +42,8 @@ private[scala] case class IterableObservable[A](from: Iterable[A]) extends Obser
             counter -= 1
           }
 
-          if (subscribed && left.isEmpty) {
+          if (!completed && subscribed && left.isEmpty) {
+            completed = true
             observer.onComplete()
           }
         }

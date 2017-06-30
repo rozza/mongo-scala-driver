@@ -87,7 +87,7 @@ class ScalaObservableSpec extends FlatSpec with Matchers {
     def myObservable(fail: Boolean = false): Observable[String] =
       observable[Int](fail = fail).flatMap((res: Int) => observable(List(res.toString)))
 
-    var results = ArrayBuffer[String]()
+    val results = ArrayBuffer[String]()
     myObservable().subscribe((s: String) => results += s)
     results should equal((1 to 100).map(_.toString))
 

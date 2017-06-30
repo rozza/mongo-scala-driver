@@ -16,6 +16,8 @@
 
 package org.mongodb.scala.internal
 
+import java.util.concurrent.CountDownLatch
+
 import scala.collection.mutable
 
 import org.mongodb.scala.{Observer, Subscription}
@@ -36,16 +38,22 @@ object TestObserver {
 
 }
 
-case class TestObserver[A](delegate: Observer[A]) extends Observer[A] {
+case class TestObserver[A](delegate: Observer[A]) extends CountDownLatch(1) with Observer[A]  {
 
   var subscription: Option[Subscription] = None
   var error: Option[Throwable] = None
-  val results: mutable.ListBuffer[A] = mutable.ListBuffer[A]()
   var completed: Boolean = false
+  val _results: mutable.ListBuffer[A] = mutable.ListBuffer[A]()
+
+  def results: List[A] = {
+    await()
+    _results.toList
+  }
 
   override def onError(throwable: Throwable): Unit = {
     error = Some(throwable)
     delegate.onError(throwable)
+    countDown()
   }
 
   override def onSubscribe(sub: Subscription): Unit = {
@@ -54,12 +62,15 @@ case class TestObserver[A](delegate: Observer[A]) extends Observer[A] {
   }
 
   override def onComplete(): Unit = {
-    completed = true
     delegate.onComplete()
+    completed = true
+    countDown()
   }
 
   override def onNext(result: A): Unit = {
-    results.append(result)
+    this.synchronized {
+      _results.append(result)
+    }
     delegate.onNext(result)
   }
 }
