@@ -21,7 +21,7 @@ import com.mongodb.{MongoCompressor => JMongoCompressor}
 /**
  * Metadata describing a compressor to use for sending and receiving messages to a MongoDB server.
  *
- * @since 3.6
+ * @since 2.2
  * @note Requires MongoDB 3.4 or greater
  */
 object MongoCompressor {
@@ -37,6 +37,7 @@ object MongoCompressor {
    * Create an instance for zlib compression.
    *
    * @return A compressor based on the zlib compression algorithm
+   * @note Requires MongoDB 3.6 or greater
    */
   def createZlibCompressor: MongoCompressor = JMongoCompressor.createZlibCompressor()
 }

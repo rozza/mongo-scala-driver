@@ -49,7 +49,7 @@ object Filters {
   def eq[TItem](fieldName: String, value: TItem): Bson = JFilters.eq(fieldName, value)
 
   /**
-   * Creates a filter that matches all documents that validate against the given JSON schema document.
+   * Allows the use of aggregation expressions within the query language.
    *
    * @param expression the aggregation expression
    * @tparam TExpression the expression type
