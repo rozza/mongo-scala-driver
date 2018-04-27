@@ -70,7 +70,7 @@ class MongoClientSpec extends FlatSpec with Matchers with MockFactory {
   it should "accept MongoClientSettings" in {
     val serverAddress = new ServerAddress("localhost", 27020)
     val clusterSettings = ClusterSettings.builder().hosts(List(serverAddress).asJava).build()
-    val mongoClient = MongoClient(MongoClientSettings.builder().clusterSettings(clusterSettings).build())
+    val mongoClient = MongoClient(MongoClientSettings.builder().applyToClusterSettings(b => b.applySettings(clusterSettings)).build())
 
     mongoClient.settings.getClusterSettings.getHosts.get(0) shouldBe serverAddress
   }
