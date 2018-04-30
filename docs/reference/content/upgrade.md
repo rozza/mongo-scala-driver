@@ -13,11 +13,11 @@ title = "Upgrading"
 #### MongoClientSettings
 
 The Mongo Java Driver 3.7.0 introduces a new `com.mongodb.MongoClientSettings` class to unify the settings across the sync and async drivers.
-The legacy `com.mongodb.async.client.MongoClientSettings` has been deprecated as such the `MongoClientSettings` alias now points to the
+The legacy `com.mongodb.async.client.MongoClientSettings` has been deprecated. As such the `MongoClientSettings` alias now points to the
 supported class and the `MongoClientSettings.builder()` helper points to the supported builder.
 
-The legacy settings are still supported and can imported from `com.mongodb.async.client.MongoClientSettings`. It is only required if you
-need multiple credentials or custom `heartbeatSocketSettings` both of which have been deprecated.
+The legacy settings are still supported and can be imported from `com.mongodb.async.client.MongoClientSettings`. It is only required if you
+need multiple credentials or custom `heartbeatSocketSettings`, both of which have been deprecated.
 
 ### 2.0.0
 
