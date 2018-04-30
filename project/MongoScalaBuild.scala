@@ -32,7 +32,7 @@ object MongoScalaBuild extends Build {
   import Dependencies._
   import Resolvers._
 
-  val baseVersion = "3.0.0"
+  val baseVersion = "2.3.0"
 
   val buildSettings = Seq(
     organization := "org.mongodb.scala",
