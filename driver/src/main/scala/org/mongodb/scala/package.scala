@@ -128,12 +128,12 @@ package object scala extends ObservableImplicits with WriteConcernImplicits {
    * @since 1.2
    * @note Requires MongoDB 3.4 or greater
    */
-  type MongoDriverInformation = com.mongodb.client.MongoDriverInformation
+  type MongoDriverInformation = com.mongodb.MongoDriverInformation
 
   /**
    * Various settings to control the behavior of a `MongoClient`.
    */
-  type MongoClientSettings = com.mongodb.async.client.MongoClientSettings
+  type MongoClientSettings = com.mongodb.MongoClientSettings
 
   /**
    * A Client Session

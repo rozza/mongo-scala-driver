@@ -505,6 +505,20 @@ package object model {
   type ReplaceOneModel[TResult] = com.mongodb.client.model.ReplaceOneModel[TResult]
 
   /**
+   * The options to apply when replacing documents.
+   * @since 2.3
+   */
+  type ReplaceOptions = com.mongodb.client.model.ReplaceOptions
+
+  /**
+   * The options to apply when replacing documents.
+   * @since 2.3
+   */
+  object ReplaceOptions {
+    def apply(): ReplaceOptions = new com.mongodb.client.model.ReplaceOptions()
+  }
+
+  /**
    * A model describing the replacement of at most one document that matches the query filter.
    */
   object ReplaceOneModel {
@@ -529,8 +543,22 @@ package object model {
      * @tparam TResult the type of document to insert. This can be of any type for which a `Codec` is registered
      * @return the new ReplaceOneModel
      */
+    @deprecated("Use `ReplaceOptions` instead of `UpdateOptions`", "2.3")
     def apply[TResult](filter: Bson, replacement: TResult, updateOptions: UpdateOptions): ReplaceOneModel[TResult] =
       new com.mongodb.client.model.ReplaceOneModel[TResult](filter, replacement, updateOptions)
+
+    /**
+     * Construct a new instance.
+     *
+     * @param filter    a document describing the query filter.
+     * @param replacement the replacement document
+     * @param replaceOptions the options to apply
+     * @tparam TResult the type of document to insert. This can be of any type for which a `Codec` is registered
+     * @return the new ReplaceOneModel
+     * @since 2.3
+     */
+    def apply[TResult](filter: Bson, replacement: TResult, replaceOptions: ReplaceOptions): ReplaceOneModel[TResult] =
+      new com.mongodb.client.model.ReplaceOneModel[TResult](filter, replacement, replaceOptions)
   }
 
   /**
@@ -704,6 +732,30 @@ package object model {
    */
   type WriteModel[TResult] = com.mongodb.client.model.WriteModel[TResult]
 
+  /**
+   * Helps define new variable for the `\$lookup` pipeline stage
+   *
+   * @tparam TExpression the type of the value for the new variable
+   * @since 2.3
+   */
+  type Variable[TExpression] = com.mongodb.client.model.Variable[TExpression]
+
+  /**
+   * Helps define new variable for the `\$lookup` pipeline stage
+   * @since 2.3
+   */
+  object Variable {
+
+    /**
+     * Creates a new variable definition for use in $lookup pipeline stages
+     *
+     * @param name  the name of the new variable
+     * @param value the value of the new variable
+     */
+    def apply[TExpression](name: String, value: TExpression): Variable[TExpression] =
+      new com.mongodb.client.model.Variable[TExpression](name, value)
+
+  }
 }
 
 // scalastyle:on number.of.methods number.of.types
