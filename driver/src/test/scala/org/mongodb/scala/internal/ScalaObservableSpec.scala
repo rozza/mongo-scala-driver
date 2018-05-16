@@ -26,7 +26,6 @@ import scala.util.{Failure, Success}
 
 import com.mongodb.MongoException
 import com.mongodb.async.client.{Observer => JObserver, Subscription => JSubscription}
-
 import org.mongodb.scala._
 import org.scalatest.prop.TableDrivenPropertyChecks._
 import org.scalatest.{FlatSpec, Matchers}
@@ -507,6 +506,18 @@ class ScalaObservableSpec extends FlatSpec with Matchers {
 
     originalThreadId should not be observeOnThreadId1
     observeOnThreadId1 should not be observeOnThreadId2
+  }
+
+  it should "not stackoverflow when using flatMap with execution contexts" in {
+    val results = ArrayBuffer[Int]()
+    val countDownLatch = new CountDownLatch(1)
+    val ctx = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(5))
+
+    observable(1 to 10000).flatMap((res: Int) => Observable(Seq(res)).observeOn(ctx))
+      .subscribe((i: Int) => results.append(i), (e: Throwable) => (), () => countDownLatch.countDown())
+    countDownLatch.await(10, TimeUnit.SECONDS)
+    ctx.shutdown()
+    results should equal(1 to 10000)
   }
 
   def observable[A](from: Iterable[A] = (1 to 100), fail: Boolean = false): Observable[A] = {
