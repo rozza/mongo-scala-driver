@@ -16,32 +16,40 @@
 
 package org.mongodb.scala.internal
 
-import scala.concurrent.ExecutionContext
+import java.util.concurrent.CountDownLatch
 
 import org.mongodb.scala.{Observable, Observer, Subscription}
+
+import scala.concurrent.ExecutionContext
 
 private[scala] case class ExecutionContextObservable[T](context: ExecutionContext, original: Observable[T]) extends Observable[T] {
 
   override def subscribe(observer: Observer[_ >: T]): Unit = {
     original.subscribe(SubscriptionCheckingObserver(
       new Observer[T] {
-        override def onError(throwable: Throwable): Unit = context.execute(new Runnable {
-          override def run() = observer.onError(throwable)
-        })
+        override def onSubscribe(subscription: Subscription): Unit = withBlockingContext(() => observer.onSubscribe(subscription))
 
-        override def onSubscribe(subscription: Subscription): Unit = context.execute(new Runnable {
-          override def run() = observer.onSubscribe(subscription)
-        })
+        override def onNext(tResult: T): Unit = withBlockingContext(() => observer.onNext(tResult))
 
-        override def onComplete(): Unit = context.execute(new Runnable {
-          override def run() = observer.onComplete()
-        })
+        override def onError(throwable: Throwable): Unit = withContext(() => observer.onError(throwable))
 
-        override def onNext(tResult: T): Unit = context.execute(new Runnable {
-          override def run() = observer.onNext(tResult)
-        })
+        override def onComplete(): Unit = withContext(() => observer.onComplete())
+
+        private def withContext(f: () => Unit): Unit = {
+          context.execute(new Runnable {
+            override def run(): Unit = f()
+          })
+        }
+
+        private def withBlockingContext(f: () => Unit): Unit = {
+          val latch = new CountDownLatch(1)
+          withContext(() => {
+            f()
+            latch.countDown()
+          })
+          latch.await()
+        }
       }
     ))
   }
 }
-
