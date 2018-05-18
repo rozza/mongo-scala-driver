@@ -305,7 +305,7 @@ class ScalaObservableSpec extends FlatSpec with Matchers {
     def g = observable(100 to 101)
     val h = for {
       x: Int <- f // returns Observable(1 to 5)
-      y: Int <- g // returns Observable(100 to 100)
+      y: Int <- g // returns Observable(100 to 101)
     } yield x + y
     val expectedResults = (1 to 5).flatMap(i => (100 to 101).map(x => x + i))
 
@@ -407,9 +407,11 @@ class ScalaObservableSpec extends FlatSpec with Matchers {
 
   it should "let the user know the Observable hasn't been subscribed to" in {
     forAll(observableErrorScenarios) { (obs: (() => Observable[_])) =>
+      println(Await.result(obs().toFuture(), Duration(10, TimeUnit.SECONDS)))
       val futureError = intercept[IllegalStateException] {
         Await.result(obs().toFuture(), Duration(10, TimeUnit.SECONDS))
       }
+      println(futureError.getMessage)
       futureError.getMessage should equal("The Observable has not been subscribed to.")
 
       val headError = intercept[IllegalStateException] {
@@ -509,15 +511,8 @@ class ScalaObservableSpec extends FlatSpec with Matchers {
   }
 
   it should "not stackoverflow when using flatMap with execution contexts" in {
-    val results = ArrayBuffer[Int]()
-    val countDownLatch = new CountDownLatch(1)
-    val ctx = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(5))
-
-    observable(1 to 10000).flatMap((res: Int) => Observable(Seq(res)).observeOn(ctx))
-      .subscribe((i: Int) => results.append(i), (e: Throwable) => (), () => countDownLatch.countDown())
-    countDownLatch.await(10, TimeUnit.SECONDS)
-    ctx.shutdown()
-    results should equal(1 to 10000)
+    val altContextObservable = observable(1 to 10000).observeOn(ExecutionContext.global).flatMap((res: Int) => Observable(Seq(res)))
+    Await.result(altContextObservable.toFuture(), Duration(10, TimeUnit.SECONDS)) should equal(1 to 10000)
   }
 
   def observable[A](from: Iterable[A] = (1 to 100), fail: Boolean = false): Observable[A] = {

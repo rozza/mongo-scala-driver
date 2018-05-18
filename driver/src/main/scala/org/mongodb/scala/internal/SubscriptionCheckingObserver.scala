@@ -18,20 +18,26 @@ package org.mongodb.scala.internal
 
 import org.mongodb.scala.{Observer, Subscription}
 
-private[internal] case class SubscriptionCheckingObserver[T](wrapped: Observer[T]) extends Observer[T] {
+object SubscriptionCheckingObserver {
+  def apply[T](observer: Observer[T]): SubscriptionCheckingObserver[T] = {
+    observer match {
+      case subscriptionCheckingObserver: SubscriptionCheckingObserver[T] => subscriptionCheckingObserver
+      case wrapped: Observer[T] => new SubscriptionCheckingObserver[T](wrapped)
+    }
+  }
+}
 
+private[scala] class SubscriptionCheckingObserver[T](wrapped: Observer[T]) extends Observer[T] {
   @volatile
   private var subscription: Option[Subscription] = None
 
   override def onSubscribe(sub: Subscription): Unit = {
+    require(subscription.isEmpty, "The Observer has already been subscribed to.")
     subscription = Some(sub)
     wrapped.onSubscribe(sub)
   }
 
-  override def onNext(result: T): Unit = {
-    if (subscription.isEmpty) throw new IllegalStateException("The Observable has not been subscribed to.")
-    wrapped.onNext(result)
-  }
+  override def onNext(result: T): Unit = wrapped.onNext(result)
 
   override def onError(e: Throwable): Unit = wrapped.onError(e)
 

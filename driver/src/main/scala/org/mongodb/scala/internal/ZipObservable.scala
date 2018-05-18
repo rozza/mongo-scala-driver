@@ -39,6 +39,10 @@ private[scala] case class ZipObservable[T, U](
     private var observable1Subscription: Option[Subscription] = None
     @volatile
     private var observable2Subscription: Option[Subscription] = None
+    @volatile
+    private var onErrorCalled = false
+    @volatile
+    private var onCompleteCalled = false
 
     def createFirstObserver: Observer[T] = createSubObserver[T](thisQueue, observer, firstSub = true)
 
@@ -46,8 +50,13 @@ private[scala] case class ZipObservable[T, U](
 
     private def createSubObserver[A](queue: ConcurrentLinkedQueue[(Long, A)], observer: Observer[_ >: (T, U)], firstSub: Boolean): Observer[A] = {
       new Observer[A] {
+        @volatile
         var counter: Long = 0
-        override def onError(throwable: Throwable): Unit = observer.onError(throwable)
+
+        override def onError(throwable: Throwable): Unit = {
+          onErrorCalled = true
+          observer.onError(throwable)
+        }
 
         override def onSubscribe(subscription: Subscription): Unit = {
           if (firstSub) {
@@ -61,20 +70,27 @@ private[scala] case class ZipObservable[T, U](
           }
         }
 
-        override def onComplete(): Unit = observer.onComplete()
+        override def onComplete(): Unit = {
+          onCompleteCalled = true
+          processAction()
+        }
 
         override def onNext(tResult: A): Unit = {
           counter += 1
           queue.add((counter, tResult))
-          processNext(observer)
+          processAction()
         }
       }
     }
 
-    private def processNext(observer: Observer[_ >: (T, U)]): Unit = {
+    private def processAction(): Unit = {
+      if (onErrorCalled) return // scalastyle:off
       (thisQueue.peek, thatQueue.peek) match {
         case ((k1: Long, _), (k2: Long, _)) if k1 == k2 => observer.onNext((thisQueue.poll()._2, thatQueue.poll()._2))
-        case _ => // Do nothing counters don't match
+        case ((k1: Long, _), null ) => // Do nothing counters don't match
+        case (null, (k2: Long, _)) => // Do nothing counters don't match
+        case _ if onCompleteCalled => observer.onComplete()
+        case _ => // Do nothing
       }
     }
 

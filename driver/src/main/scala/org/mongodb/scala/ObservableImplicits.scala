@@ -16,12 +16,12 @@
 
 package org.mongodb.scala
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Success, Try}
-
 import com.mongodb.async.client.{Observable => JObservable, Observer => JObserver, Subscription => JSubscription}
-
 import org.mongodb.scala.internal._
 
 /**
@@ -90,7 +90,8 @@ trait ObservableImplicits {
      * @param doOnComplete anonymous function to apply on completion.
      */
     def subscribe(doOnNext: T => Any, doOnError: Throwable => Any, doOnComplete: () => Any): Unit = {
-      observable.subscribe(new Observer[T] {
+      observable.subscribe(SubscriptionCheckingObserver(new Observer[T] {
+
         override def onSubscribe(subscription: Subscription): Unit = subscription.request(Long.MaxValue)
 
         override def onNext(tResult: T): Unit = doOnNext(tResult)
@@ -99,7 +100,7 @@ trait ObservableImplicits {
 
         override def onComplete(): Unit = doOnComplete()
 
-      })
+      }))
     }
 
     /* Monadic operations */
@@ -430,6 +431,9 @@ trait ObservableImplicits {
     override def subscribe(observer: Observer[_ >: T]): Unit = {
       observable.subscribe(
         new Observer[T] {
+
+          @volatile
+          var result: Option[T] = None
           @volatile
           var subscription: Option[Subscription] = None
 
@@ -440,14 +444,16 @@ trait ObservableImplicits {
             observer.onSubscribe(sub)
           }
 
-          override def onComplete(): Unit = observer.onComplete()
+          override def onComplete(): Unit = {
+            observer.onNext(result.getOrElse(null.asInstanceOf[T]))
+            observer.onComplete()
+          }
 
           override def onNext(tResult: T): Unit = {
             subscription.getOrElse {
               throw new IllegalStateException("The Observable has not been subscribed to.")
             }.unsubscribe()
-            observer.onNext(tResult)
-            onComplete()
+            result = Some(tResult)
           }
         }
       )

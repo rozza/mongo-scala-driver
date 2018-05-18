@@ -16,14 +16,16 @@
 
 package org.mongodb.scala.internal
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 import org.mongodb.scala._
 
 private[scala] case class FlatMapObservable[T, S](observable: Observable[T], f: T => Observable[S]) extends Observable[S] {
 
   // scalastyle:off cyclomatic.complexity method.length
   override def subscribe(observer: Observer[_ >: S]): Unit = {
-    observable.subscribe(SubscriptionCheckingObserver(
-      new Observer[T] {
+    observable.subscribe(
+      SubscriptionCheckingObserver(new Observer[T] { outer =>
 
         @volatile
         private var outerSubscription: Option[Subscription] = None
@@ -33,6 +35,7 @@ private[scala] case class FlatMapObservable[T, S](observable: Observable[T], f: 
         private var demand: Long = 0
         @volatile
         private var onCompleteCalled: Boolean = false
+        private val completed: AtomicBoolean = new AtomicBoolean(false)
 
         override def onSubscribe(subscription: Subscription): Unit = {
 
@@ -54,44 +57,40 @@ private[scala] case class FlatMapObservable[T, S](observable: Observable[T], f: 
         }
 
         override def onComplete(): Unit = {
-          if (!onCompleteCalled) {
-            onCompleteCalled = true
-            if (nestedSubscription.isEmpty) observer.onComplete()
-          }
+          if (!onCompleteCalled) onCompleteCalled = true
+          if (nestedSubscription.isEmpty && completed.compareAndSet(false, true)) observer.onComplete()
         }
 
         override def onError(throwable: Throwable): Unit = observer.onError(throwable)
 
         override def onNext(tResult: T): Unit = {
-          f(tResult).subscribe(
-            new Observer[S]() {
-              override def onError(throwable: Throwable): Unit = {
-                nestedSubscription = None
-                observer.onError(throwable)
-              }
+          f(tResult).subscribe(new Observer[S]() {
+            override def onError(throwable: Throwable): Unit = {
+              nestedSubscription = None
+              outer.onError(throwable)
+            }
 
-              override def onSubscribe(subscription: Subscription): Unit = {
-                nestedSubscription = Some(subscription)
-                if (demand > 0) subscription.request(demand)
-              }
+            override def onSubscribe(subscription: Subscription): Unit = {
+              nestedSubscription = Some(subscription)
+              if (demand > 0) subscription.request(demand)
+            }
 
-              override def onComplete(): Unit = {
-                nestedSubscription = None
-                onCompleteCalled match {
-                  case true => observer.onComplete()
-                  case false if demand > 0 =>
-                    addDemand(-1) // reduce demand by 1 as it will be incremented by the outerSubscription
-                    outerSubscription.foreach(_.request(1))
-                  case false => // No more demand
-                }
-              }
-
-              override def onNext(tResult: S): Unit = {
-                addDemand(-1)
-                observer.onNext(tResult)
+            override def onComplete(): Unit = {
+              nestedSubscription = None
+              onCompleteCalled match {
+                case true => outer.onComplete()
+                case false if demand > 0 =>
+                  addDemand(-1) // reduce demand by 1 as it will be incremented by the outerSubscription
+                  outerSubscription.foreach(_.request(1))
+                case false => // No more demand
               }
             }
-          )
+
+            override def onNext(tResult: S): Unit = {
+              addDemand(-1)
+              observer.onNext(tResult)
+            }
+          })
         }
 
         /**

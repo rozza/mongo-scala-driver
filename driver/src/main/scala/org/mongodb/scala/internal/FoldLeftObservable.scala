@@ -28,7 +28,6 @@ private[scala] case class FoldLeftObservable[T, S](observable: Observable[T], in
 
         @volatile
         private var currentValue: S = initialValue
-
         private val requested = new AtomicBoolean(false)
 
         override def onError(throwable: Throwable): Unit = observer.onError(throwable)

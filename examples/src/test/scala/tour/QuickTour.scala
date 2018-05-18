@@ -52,6 +52,12 @@ object QuickTour {
 
     collection.drop().results()
 
+    collection.insertMany(Seq("{_id: 1}","{_id: 2}","{_id: 3}").map(Document(_))).results()
+    println(collection.find().filter(Filters.in("_id", Seq(1, 2, 3): _*)).results())
+    println(collection.find().filter(Filters.in("_id", Seq(1, 2, 3))).results())
+
+    if (true) return
+
     // make a document and insert it
     val doc: Document = Document("_id" -> 0, "name" -> "MongoDB", "type" -> "database",
       "count" -> 1, "info" -> Document("x" -> 203, "y" -> 102))
