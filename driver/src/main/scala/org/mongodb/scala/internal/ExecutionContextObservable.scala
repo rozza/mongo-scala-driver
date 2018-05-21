@@ -16,32 +16,70 @@
 
 package org.mongodb.scala.internal
 
-import scala.concurrent.ExecutionContext
+import java.util.concurrent.ConcurrentLinkedQueue
 
 import org.mongodb.scala.{Observable, Observer, Subscription}
 
-private[scala] case class ExecutionContextObservable[T](context: ExecutionContext, original: Observable[T]) extends Observable[T] {
+import scala.concurrent.ExecutionContext
 
+private[scala] case class ExecutionContextObservable[T](observable: Observable[T], context: ExecutionContext) extends Observable[T] {
+
+  // scalastyle:off method.length
   override def subscribe(observer: Observer[_ >: T]): Unit = {
-    original.subscribe(SubscriptionCheckingObserver(
+    observable.subscribe(SubscriptionCheckingObserver(
       new Observer[T] {
-        override def onError(throwable: Throwable): Unit = context.execute(new Runnable {
-          override def run() = observer.onError(throwable)
+        private val queue = new ConcurrentLinkedQueue[T]()
+        @volatile
+        private var onSubscribeCalled = false
+        @volatile
+        private var error: Option[Throwable] = None
+        @volatile
+        private var onCompleteCalled = false
+
+        override def onSubscribe(subscription: Subscription): Unit = withContext(() => {
+          onSubscribeCalled = true
+          observer.onSubscribe(subscription)
+          processAction()
         })
 
-        override def onSubscribe(subscription: Subscription): Unit = context.execute(new Runnable {
-          override def run() = observer.onSubscribe(subscription)
-        })
+        override def onNext(tResult: T): Unit = {
+          queue.add(tResult)
+          processAction()
+        }
 
-        override def onComplete(): Unit = context.execute(new Runnable {
-          override def run() = observer.onComplete()
-        })
+        override def onError(throwable: Throwable): Unit = {
+          error = Some(throwable)
+          processAction()
+        }
 
-        override def onNext(tResult: T): Unit = context.execute(new Runnable {
-          override def run() = observer.onNext(tResult)
-        })
+        override def onComplete(): Unit = {
+          onCompleteCalled = true
+          processAction()
+        }
+
+        def processAction(): Unit = synchronized {
+          if (!onSubscribeCalled) return // scalastyle:ignore
+          if (error.isDefined) {
+            withContext(() => observer.onError(error.get))
+          } else {
+            val next = queue.poll()
+            if (next != null) {
+              withContext(() => {
+                observer.onNext(next)
+                processAction()
+              })
+            } else if (onCompleteCalled) {
+              withContext(() => observer.onComplete())
+            }
+          }
+        }
+
+        private def withContext(f: () => Unit): Unit = {
+          context.execute(new Runnable {
+            override def run(): Unit = f()
+          })
+        }
       }
     ))
   }
 }
-
