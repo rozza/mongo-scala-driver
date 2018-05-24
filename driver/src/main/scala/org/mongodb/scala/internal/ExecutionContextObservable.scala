@@ -16,7 +16,7 @@
 
 package org.mongodb.scala.internal
 
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicInteger
 
 import org.mongodb.scala.{Observable, Observer, Subscription}
 
@@ -28,49 +28,38 @@ private[scala] case class ExecutionContextObservable[T](observable: Observable[T
   override def subscribe(observer: Observer[_ >: T]): Unit = {
     observable.subscribe(SubscriptionCheckingObserver(
       new Observer[T] {
-        private val queue = new ConcurrentLinkedQueue[T]()
-        @volatile
-        private var onSubscribeCalled = false
+        private val referenceCount = new AtomicInteger(1)
         @volatile
         private var error: Option[Throwable] = None
         @volatile
         private var onCompleteCalled = false
 
-        override def onSubscribe(subscription: Subscription): Unit = withContext(() => {
-          onSubscribeCalled = true
-          observer.onSubscribe(subscription)
-          processAction()
-        })
+        override def onSubscribe(subscription: Subscription): Unit = withContext(() => { observer.onSubscribe(subscription) })
 
         override def onNext(tResult: T): Unit = {
-          queue.add(tResult)
-          processAction()
+          referenceCount.incrementAndGet()
+          withContext(() => {
+            observer.onNext(tResult)
+            checkTerminated()
+          })
         }
 
         override def onError(throwable: Throwable): Unit = {
           error = Some(throwable)
-          processAction()
+          checkTerminated()
         }
 
         override def onComplete(): Unit = {
           onCompleteCalled = true
-          processAction()
+          checkTerminated()
         }
 
-        def processAction(): Unit = synchronized {
-          if (!onSubscribeCalled) return // scalastyle:ignore
-          if (error.isDefined) {
+        def checkTerminated(decrement: Boolean = false): Unit = {
+          val counter = referenceCount.decrementAndGet()
+          if (counter == 0 && error.isDefined) {
             withContext(() => observer.onError(error.get))
-          } else {
-            val next = queue.poll()
-            if (next != null) {
-              withContext(() => {
-                observer.onNext(next)
-                processAction()
-              })
-            } else if (onCompleteCalled) {
-              withContext(() => observer.onComplete())
-            }
+          } else if (counter == 0 && onCompleteCalled) {
+            observer.onComplete()
           }
         }
 
