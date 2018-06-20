@@ -12,6 +12,9 @@ Changes between released versions
 
 ### 2.4.0
   * Updated MongoDB Driver Async to 3.8.0.
+  * Deprecated `MongoCollection.count` and added `MongoCollection.countDocuments` and `MongoCollection.estimatedDocumentCount` [SCALA-422](https://jira.mongodb.org/browse/SCALA-422)
+  * Added method to disable computing MD5 checksums when uploading files [SCALA-373](https://jira.mongodb.org/browse/SCALA-373)
+  * Added cluster and database wide change stream support [SCALA-405](https://jira.mongodb.org/browse/SCALA-405)
   * Added transaction support. [SCALA-388](https://jira.mongodb.org/browse/SCALA-388)
   * Added `MongoCredential.createScramSha256Credential`. [SCALA-375](https://jira.mongodb.org/browse/SCALA-375)
   * Updated CaseClassCodec error catching for unsupported types. [SCALA-343](https://jira.mongodb.org/browse/SCALA-343)
