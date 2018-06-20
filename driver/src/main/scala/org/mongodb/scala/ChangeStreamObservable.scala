@@ -70,7 +70,7 @@ case class ChangeStreamObservable[TResult](private val wrapped: ChangeStreamIter
    *
    * @param startAtOperationTime the start at operation time
    * @return this
-   * @since 2.4.0
+   * @since 2.4
    * @note Requires MongoDB 4.0 or greater
    */
   def startAtOperationTime(startAtOperationTime: BsonTimestamp): ChangeStreamObservable[TResult] = {

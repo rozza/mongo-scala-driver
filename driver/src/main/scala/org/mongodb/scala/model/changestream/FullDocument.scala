@@ -27,7 +27,7 @@ import scala.util.Try
  * When set to [[FullDocument.UPDATE_LOOKUP]], the change stream for partial updates will include both a delta describing the
  * changes to the document as well as a copy of the entire document that was changed from *some time<*> after the change occurred.
  * @note Requires MongoDB 3.6 or greater
- * @since 3.4
+ * @since 2.4
  */
 object FullDocument {
 
