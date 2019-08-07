@@ -23,12 +23,4 @@ package org.mongodb.scala
  */
 package object vault {
 
-  /**
-   * The Key vault.
-   *
-   * Used to create data encryption keys, and to explicitly encrypt and decrypt values when auto-encryption is not an option.
-   *
-   */
-  type ClientEncryption = com.mongodb.async.client.vault.ClientEncryption
-
 }

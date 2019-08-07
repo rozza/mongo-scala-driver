@@ -32,6 +32,6 @@ object ClientEncryptions {
    * @param options the key vault options
    * @return the key vault
    */
-  def create(options: ClientEncryptionSettings): ClientEncryption = JClientEncryptions.create(options)
+  def create(options: ClientEncryptionSettings): ClientEncryption = ClientEncryption(JClientEncryptions.create(options))
 
 }
