@@ -18,7 +18,7 @@ package org.mongodb.scala.gridfs
 
 import java.nio.ByteBuffer
 
-import com.mongodb.async.client.gridfs.{GridFSDownloadStream => JGridFSDownloadStream}
+import com.mongodb.reactivestreams.client.gridfs.{GridFSDownloadStream => JGridFSDownloadStream}
 
 import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
@@ -33,7 +33,7 @@ class GridFSDownloadStreamSpec extends FlatSpec with Matchers with MockFactory {
 
     wrapped.foreach((name: String) => {
       val cleanedName = name.stripPrefix("get")
-      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail))
+      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail), s"Missing: $name")
     })
   }
 
@@ -42,16 +42,16 @@ class GridFSDownloadStreamSpec extends FlatSpec with Matchers with MockFactory {
     val batchSize = 10
 
     wrapper.expects(Symbol("batchSize"))(batchSize).once()
-    wrapper.expects(Symbol("getGridFSFile"))(*).once()
-    wrapper.expects(Symbol("read"))(dst, *).once()
-    wrapper.expects(Symbol("skip"))(10L, *).once()
-    wrapper.expects(Symbol("close"))(*).once()
+    wrapper.expects(Symbol("getGridFSFile"))().once()
+    wrapper.expects(Symbol("read"))(dst).once()
+    wrapper.expects(Symbol("skip"))(10L).once()
+    wrapper.expects(Symbol("close"))().once()
 
     gridFSDownloadStream.batchSize(batchSize)
-    gridFSDownloadStream.gridFSFile().head()
-    gridFSDownloadStream.read(dst).head()
-    gridFSDownloadStream.skip(10L).head()
-    gridFSDownloadStream.close().head()
+    gridFSDownloadStream.gridFSFile()
+    gridFSDownloadStream.read(dst)
+    gridFSDownloadStream.skip(10L)
+    gridFSDownloadStream.close()
   }
 
 }

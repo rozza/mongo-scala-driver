@@ -21,10 +21,10 @@ object Dependencies {
   // Versions
   val scalaVersions           = Seq("2.11.12", "2.12.8", "2.13.0")
   val scalaCoreVersion        = "2.13.0"
-  val mongodbDriverVersion    = "3.11.0"
+  val mongodbDriverVersion    = "1.12.0"
 
   val scalaTestVersion        = "3.0.8"
-  val scalaMockVersion        = "4.3.0"
+  val scalaMockVersion        = "4.4.0"
   val logbackVersion          = "1.1.3"
   val reflectionsVersion      = "0.9.10"
   val javaxServeletApiVersion = "2.5"
@@ -33,7 +33,7 @@ object Dependencies {
   val rxStreamsVersion        = "1.0.0"
 
   // Libraries
-  val mongodbDriver = "org.mongodb" % "mongodb-driver-async" % mongodbDriverVersion
+  val mongodbDriver = "org.mongodb" % "mongodb-driver-reactivestreams" % mongodbDriverVersion
   val scalaReflect  =  scalaVersion("org.scala-lang" % "scala-reflect" % _)
 
   // Test

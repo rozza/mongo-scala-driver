@@ -16,7 +16,7 @@
 
 package org.mongodb.scala
 
-import com.mongodb.async.client.{Subscription => JSubscription}
+import org.reactivestreams.{Subscription => JSubscription}
 
 /**
  * A `Subscription` represents a one-to-one lifecycle of a [[Observer]] subscribing to an [[Observable]].
@@ -41,11 +41,11 @@ trait Subscription extends JSubscription {
    * @param n the strictly positive number of elements to requests to the upstream [[Observable]]
    */
   def request(n: Long): Unit
+
   /**
    * Request the [[Observable]] to stop sending data and clean up resources.
    *
    * As this request is asynchronous data may still be sent to meet previously signalled demand after calling cancel.
-   *
    */
   def unsubscribe(): Unit
 
@@ -55,4 +55,11 @@ trait Subscription extends JSubscription {
    * @return `true` if this `Subscription` is currently unsubscribed, `false` otherwise
    */
   def isUnsubscribed: Boolean
+
+  /**
+   * Request the [[Observable]] to stop sending data and clean up resources.
+   *
+   * As this request is asynchronous data may still be sent to meet previously signalled demand after calling cancel.
+   */
+  override def cancel(): Unit = unsubscribe()
 }

@@ -18,9 +18,9 @@ package org.mongodb
 
 import _root_.scala.language.implicitConversions
 import _root_.scala.reflect.ClassTag
-
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.internal.WriteConcernImplicits
+import org.reactivestreams.Publisher
 
 /**
  * The MongoDB Scala Driver package
@@ -140,7 +140,7 @@ package object scala extends ClientSessionImplicits with ObservableImplicits wit
    *
    * @since 2.4
    */
-  type ClientSession = com.mongodb.async.client.ClientSession
+  type ClientSession = com.mongodb.reactivestreams.client.ClientSession
 
   /**
    * Options for creating ClientSessions
@@ -357,6 +357,13 @@ package object scala extends ClientSessionImplicits with ObservableImplicits wit
    * @since 2.7
    */
   type ClientEncryptionSettings = com.mongodb.ClientEncryptionSettings
+
+  /**
+   * Alias to Void
+   *
+   * @since 4.0
+   */
+  type Completed = Void
 
   /**
    * Helper to get the class from a classTag

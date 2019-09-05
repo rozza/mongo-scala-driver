@@ -18,15 +18,12 @@ package org.mongodb.scala
 
 import java.util.concurrent.TimeUnit
 
-import scala.concurrent.duration.Duration
-
 import com.mongodb.CursorType
-import com.mongodb.async.SingleResultCallback
-import com.mongodb.async.client.FindIterable
-
+import com.mongodb.reactivestreams.client.FindPublisher
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.internal.ObservableHelper._
 import org.mongodb.scala.model.Collation
+
+import scala.concurrent.duration.Duration
 
 /**
  * Observable interface for Find.
@@ -35,7 +32,7 @@ import org.mongodb.scala.model.Collation
  * @tparam TResult The type of the result.
  * @since 1.0
  */
-case class FindObservable[TResult](private val wrapped: FindIterable[TResult]) extends Observable[TResult] {
+case class FindObservable[TResult](private val wrapped: FindPublisher[TResult]) extends Observable[TResult] {
   /**
    * Helper to return a Observable limited to just the first result the query.
    *
@@ -43,7 +40,7 @@ case class FindObservable[TResult](private val wrapped: FindIterable[TResult]) e
    *
    * @return a Observable which will return the first item
    */
-  def first(): SingleObservable[TResult] = observe(wrapped.first(_: SingleResultCallback[TResult]))
+  def first(): SingleObservable[TResult] = wrapped.first()
 
   /**
    * Sets the query filter to apply to the query.
@@ -327,5 +324,5 @@ case class FindObservable[TResult](private val wrapped: FindIterable[TResult]) e
     this
   }
 
-  override def subscribe(observer: Observer[_ >: TResult]): Unit = observe(wrapped).subscribe(observer)
+  override def subscribe(observer: Observer[_ >: TResult]): Unit = wrapped.subscribe(observer)
 }

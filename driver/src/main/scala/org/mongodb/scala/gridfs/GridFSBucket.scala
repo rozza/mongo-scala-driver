@@ -16,13 +16,10 @@
 
 package org.mongodb.scala.gridfs
 
-import org.bson.types.ObjectId
-import com.mongodb.async.SingleResultCallback
-import com.mongodb.async.client.gridfs.{GridFSBuckets, GridFSBucket => JGridFSBucket}
-import org.mongodb.scala.bson.BsonValue
+import com.mongodb.reactivestreams.client.gridfs.{GridFSBuckets, GridFSBucket => JGridFSBucket}
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.internal.ObservableHelper.{observe, observeCompleted, observeLong}
-import org.mongodb.scala.{ClientSession, Completed, MongoDatabase, Observable, ReadConcern, ReadPreference, WriteConcern}
+import org.mongodb.scala.bson.{BsonValue, ObjectId}
+import org.mongodb.scala.{ClientSession, Completed, MongoDatabase, Observable, ReadConcern, ReadPreference, SingleObservable, WriteConcern}
 
 /**
  * A factory for GridFSBucket instances.
@@ -285,8 +282,7 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @param source   the Stream providing the file data
    * @return a Observable returning a single element containing the ObjectId of the uploaded file.
    */
-  def uploadFromStream(filename: String, source: AsyncInputStream): Observable[ObjectId] =
-    observe(wrapped.uploadFromStream(filename, source, _: SingleResultCallback[ObjectId]))
+  def uploadFromStream(filename: String, source: AsyncInputStream): Observable[ObjectId] = wrapped.uploadFromStream(filename, source)
 
   /**
    * Uploads the contents of the given `AsyncInputStream` to a GridFS bucket.
@@ -300,7 +296,7 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @return a Observable returning a single element containing the ObjectId of the uploaded file.
    */
   def uploadFromStream(filename: String, source: AsyncInputStream, options: GridFSUploadOptions): Observable[ObjectId] =
-    observe(wrapped.uploadFromStream(filename, source, options, _: SingleResultCallback[ObjectId]))
+    wrapped.uploadFromStream(filename, source, options)
 
   /**
    * Uploads the contents of the given `AsyncInputStream` to a GridFS bucket.
@@ -313,8 +309,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @param source   the Stream providing the file data
    * @return a Observable with a single element indicating when the operation has completed
    */
-  def uploadFromStream(id: BsonValue, filename: String, source: AsyncInputStream): Observable[Completed] =
-    observeCompleted(wrapped.uploadFromStream(id, filename, source, _: SingleResultCallback[Void]))
+  def uploadFromStream(id: BsonValue, filename: String, source: AsyncInputStream): SingleObservable[Completed] =
+    wrapped.uploadFromStream(id, filename, source)
 
   /**
    * Uploads the contents of the given `AsyncInputStream` to a GridFS bucket.
@@ -328,8 +324,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @param options  the GridFSUploadOptions
    * @return a Observable with a single element indicating when the operation has completed
    */
-  def uploadFromStream(id: BsonValue, filename: String, source: AsyncInputStream, options: GridFSUploadOptions): Observable[Completed] =
-    observeCompleted(wrapped.uploadFromStream(id, filename, source, options, _: SingleResultCallback[Void]))
+  def uploadFromStream(id: BsonValue, filename: String, source: AsyncInputStream, options: GridFSUploadOptions): SingleObservable[Completed] =
+    wrapped.uploadFromStream(id, filename, source, options)
 
   /**
    * Uploads the contents of the given `AsyncInputStream` to a GridFS bucket.
@@ -345,7 +341,7 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @note Requires MongoDB 3.6 or greater
    */
   def uploadFromStream(clientSession: ClientSession, filename: String, source: AsyncInputStream): Observable[ObjectId] =
-    observe(wrapped.uploadFromStream(clientSession, filename, source, _: SingleResultCallback[ObjectId]))
+    wrapped.uploadFromStream(clientSession, filename, source)
 
   /**
    * Uploads the contents of the given `AsyncInputStream` to a GridFS bucket.
@@ -362,7 +358,7 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @note Requires MongoDB 3.6 or greater
    */
   def uploadFromStream(clientSession: ClientSession, filename: String, source: AsyncInputStream, options: GridFSUploadOptions): Observable[ObjectId] =
-    observe(wrapped.uploadFromStream(clientSession, filename, source, options, _: SingleResultCallback[ObjectId]))
+    wrapped.uploadFromStream(clientSession, filename, source, options)
 
   /**
    * Uploads the contents of the given `AsyncInputStream` to a GridFS bucket.
@@ -378,8 +374,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @since 2.2
    * @note Requires MongoDB 3.6 or greater
    */
-  def uploadFromStream(clientSession: ClientSession, id: BsonValue, filename: String, source: AsyncInputStream): Observable[Completed] =
-    observeCompleted(wrapped.uploadFromStream(clientSession, id, filename, source, _: SingleResultCallback[Void]))
+  def uploadFromStream(clientSession: ClientSession, id: BsonValue, filename: String, source: AsyncInputStream): SingleObservable[Completed] =
+    wrapped.uploadFromStream(clientSession, id, filename, source)
 
   /**
    * Uploads the contents of the given `AsyncInputStream` to a GridFS bucket.
@@ -397,8 +393,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @note Requires MongoDB 3.6 or greater
    */
   def uploadFromStream(clientSession: ClientSession, id: BsonValue, filename: String, source: AsyncInputStream,
-                       options: GridFSUploadOptions): Observable[Completed] =
-    observeCompleted(wrapped.uploadFromStream(clientSession, id, filename, source, options, _: SingleResultCallback[Void]))
+                       options: GridFSUploadOptions): SingleObservable[Completed] =
+    wrapped.uploadFromStream(clientSession, id, filename, source, options)
 
   /**
    * Opens a AsyncInputStream from which the application can read the contents of the stored file specified by `id`.
@@ -495,8 +491,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @param destination the destination stream
    * @return a Observable with a single element indicating the file has been downloaded
    */
-  def downloadToStream(id: ObjectId, destination: AsyncOutputStream): Observable[Long] =
-    observeLong(wrapped.downloadToStream(id, destination, _: SingleResultCallback[java.lang.Long]))
+  def downloadToStream(id: ObjectId, destination: AsyncOutputStream): SingleObservable[Long] =
+    wrapped.downloadToStream(id, destination)
 
   /**
    * Downloads the contents of the stored file specified by `id` and writes the contents to the `destination`
@@ -506,8 +502,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @param destination the destination stream
    * @return a Observable with a single element indicating the file has been downloaded
    */
-  def downloadToStream(id: BsonValue, destination: AsyncOutputStream): Observable[Long] =
-    observeLong(wrapped.downloadToStream(id, destination, _: SingleResultCallback[java.lang.Long]))
+  def downloadToStream(id: BsonValue, destination: AsyncOutputStream): SingleObservable[Long] =
+    wrapped.downloadToStream(id, destination)
 
   /**
    * Downloads the contents of the latest version of the stored file specified by `filename` and writes the contents to
@@ -517,8 +513,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @param destination the destination stream
    * @return a Observable with a single element indicating the file has been downloaded
    */
-  def downloadToStream(filename: String, destination: AsyncOutputStream): Observable[Long] =
-    observeLong(wrapped.downloadToStream(filename, destination, _: SingleResultCallback[java.lang.Long]))
+  def downloadToStream(filename: String, destination: AsyncOutputStream): SingleObservable[Long] =
+    wrapped.downloadToStream(filename, destination)
 
   /**
    * Downloads the contents of the stored file specified by `filename` and by the revision in `options` and writes the
@@ -529,8 +525,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @param options     the download options
    * @return a Observable with a single element indicating the file has been downloaded
    */
-  def downloadToStream(filename: String, destination: AsyncOutputStream, options: GridFSDownloadOptions): Observable[Long] =
-    observeLong(wrapped.downloadToStream(filename, destination, options, _: SingleResultCallback[java.lang.Long]))
+  def downloadToStream(filename: String, destination: AsyncOutputStream, options: GridFSDownloadOptions): SingleObservable[Long] =
+    wrapped.downloadToStream(filename, destination, options)
 
   /**
    * Downloads the contents of the stored file specified by `id` and writes the contents to the `destination`
@@ -543,8 +539,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @since 2.2
    * @note Requires MongoDB 3.6 or greater
    */
-  def downloadToStream(clientSession: ClientSession, id: ObjectId, destination: AsyncOutputStream): Observable[Long] =
-    observeLong(wrapped.downloadToStream(clientSession, id, destination, _: SingleResultCallback[java.lang.Long]))
+  def downloadToStream(clientSession: ClientSession, id: ObjectId, destination: AsyncOutputStream): SingleObservable[Long] =
+    wrapped.downloadToStream(clientSession, id, destination)
 
   /**
    * Downloads the contents of the stored file specified by `id` and writes the contents to the `destination`
@@ -557,8 +553,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @since 2.2
    * @note Requires MongoDB 3.6 or greater
    */
-  def downloadToStream(clientSession: ClientSession, id: BsonValue, destination: AsyncOutputStream): Observable[Long] =
-    observeLong(wrapped.downloadToStream(clientSession, id, destination, _: SingleResultCallback[java.lang.Long]))
+  def downloadToStream(clientSession: ClientSession, id: BsonValue, destination: AsyncOutputStream): SingleObservable[Long] =
+    wrapped.downloadToStream(clientSession, id, destination)
 
   /**
    * Downloads the contents of the latest version of the stored file specified by `filename` and writes the contents to
@@ -571,8 +567,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @since 2.2
    * @note Requires MongoDB 3.6 or greater
    */
-  def downloadToStream(clientSession: ClientSession, filename: String, destination: AsyncOutputStream): Observable[Long] =
-    observeLong(wrapped.downloadToStream(clientSession, filename, destination, _: SingleResultCallback[java.lang.Long]))
+  def downloadToStream(clientSession: ClientSession, filename: String, destination: AsyncOutputStream): SingleObservable[Long] =
+    wrapped.downloadToStream(clientSession, filename, destination)
 
   /**
    * Downloads the contents of the stored file specified by `filename` and by the revision in `options` and writes the
@@ -586,8 +582,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @since 2.2
    * @note Requires MongoDB 3.6 or greater
    */
-  def downloadToStream(clientSession: ClientSession, filename: String, destination: AsyncOutputStream, options: GridFSDownloadOptions): Observable[Long] =
-    observeLong(wrapped.downloadToStream(clientSession, filename, destination, options, _: SingleResultCallback[java.lang.Long]))
+  def downloadToStream(clientSession: ClientSession, filename: String, destination: AsyncOutputStream, options: GridFSDownloadOptions): SingleObservable[Long] =
+    wrapped.downloadToStream(clientSession, filename, destination, options)
 
   /**
    * Finds all documents in the files collection.
@@ -648,7 +644,7 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @param id       the ObjectId of the file to be deleted
    * @return a Observable with a single element indicating when the operation has completed
    */
-  def delete(id: ObjectId): Observable[Completed] = observeCompleted(wrapped.delete(id, _: SingleResultCallback[Void]))
+  def delete(id: ObjectId): SingleObservable[Completed] = wrapped.delete(id)
 
   /**
    * Given a `id`, delete this stored file's files collection document and associated chunks from a GridFS bucket.
@@ -656,19 +652,7 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @param id       the ObjectId of the file to be deleted
    * @return a Observable with a single element indicating when the operation has completed
    */
-  def delete(id: BsonValue): Observable[Completed] = observeCompleted(wrapped.delete(id, _: SingleResultCallback[Void]))
-
-  /**
-   * Given a `id`, delete this stored file's files collection document and associated chunks from a GridFS bucket.
-   *
-   * @param clientSession the client session with which to associate this operation
-   * @param id       the ObjectId of the file to be deleted
-   * @return a Observable with a single element indicating when the operation has completed
-   * @since 2.2
-   * @note Requires MongoDB 3.6 or greater
-   */
-  def delete(clientSession: ClientSession, id: ObjectId): Observable[Completed] =
-    observeCompleted(wrapped.delete(clientSession, id, _: SingleResultCallback[Void]))
+  def delete(id: BsonValue): SingleObservable[Completed] = wrapped.delete(id)
 
   /**
    * Given a `id`, delete this stored file's files collection document and associated chunks from a GridFS bucket.
@@ -679,8 +663,20 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @since 2.2
    * @note Requires MongoDB 3.6 or greater
    */
-  def delete(clientSession: ClientSession, id: BsonValue): Observable[Completed] =
-    observeCompleted(wrapped.delete(clientSession, id, _: SingleResultCallback[Void]))
+  def delete(clientSession: ClientSession, id: ObjectId): SingleObservable[Completed] =
+    wrapped.delete(clientSession, id)
+
+  /**
+   * Given a `id`, delete this stored file's files collection document and associated chunks from a GridFS bucket.
+   *
+   * @param clientSession the client session with which to associate this operation
+   * @param id       the ObjectId of the file to be deleted
+   * @return a Observable with a single element indicating when the operation has completed
+   * @since 2.2
+   * @note Requires MongoDB 3.6 or greater
+   */
+  def delete(clientSession: ClientSession, id: BsonValue): SingleObservable[Completed] =
+    wrapped.delete(clientSession, id)
 
   /**
    * Renames the stored file with the specified `id`.
@@ -689,8 +685,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @param newFilename the new filename for the file
    * @return a Observable with a single element indicating when the operation has completed
    */
-  def rename(id: ObjectId, newFilename: String): Observable[Completed] =
-    observeCompleted(wrapped.rename(id, newFilename, _: SingleResultCallback[Void]))
+  def rename(id: ObjectId, newFilename: String): SingleObservable[Completed] =
+    wrapped.rename(id, newFilename)
 
   /**
    * Renames the stored file with the specified `id`.
@@ -699,8 +695,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @param newFilename the new filename for the file
    * @return a Observable with a single element indicating when the operation has completed
    */
-  def rename(id: BsonValue, newFilename: String): Observable[Completed] =
-    observeCompleted(wrapped.rename(id, newFilename, _: SingleResultCallback[Void]))
+  def rename(id: BsonValue, newFilename: String): SingleObservable[Completed] =
+    wrapped.rename(id, newFilename)
 
   /**
    * Renames the stored file with the specified `id`.
@@ -712,8 +708,8 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @since 2.2
    * @note Requires MongoDB 3.6 or greater
    */
-  def rename(clientSession: ClientSession, id: ObjectId, newFilename: String): Observable[Completed] =
-    observeCompleted(wrapped.rename(clientSession, id, newFilename, _: SingleResultCallback[Void]))
+  def rename(clientSession: ClientSession, id: ObjectId, newFilename: String): SingleObservable[Completed] =
+    wrapped.rename(clientSession, id, newFilename)
 
   /**
    * Renames the stored file with the specified `id`.
@@ -725,15 +721,15 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @since 2.2
    * @note Requires MongoDB 3.6 or greater
    */
-  def rename(clientSession: ClientSession, id: BsonValue, newFilename: String): Observable[Completed] =
-    observeCompleted(wrapped.rename(clientSession, id, newFilename, _: SingleResultCallback[Void]))
+  def rename(clientSession: ClientSession, id: BsonValue, newFilename: String): SingleObservable[Completed] =
+    wrapped.rename(clientSession, id, newFilename)
 
   /**
    * Drops the data associated with this bucket from the database.
    *
    * @return a Observable with a single element indicating when the operation has completed
    */
-  def drop(): Observable[Completed] = observeCompleted(wrapped.drop(_: SingleResultCallback[Void]))
+  def drop(): SingleObservable[Completed] = wrapped.drop()
 
   /**
    * Drops the data associated with this bucket from the database.
@@ -743,6 +739,6 @@ case class GridFSBucket(private val wrapped: JGridFSBucket) {
    * @since 2.2
    * @note Requires MongoDB 3.6 or greater
    */
-  def drop(clientSession: ClientSession): Observable[Completed] = observeCompleted(wrapped.drop(clientSession, _: SingleResultCallback[Void]))
+  def drop(clientSession: ClientSession): SingleObservable[Completed] = wrapped.drop(clientSession)
 }
 // scalastyle:on number.of.methods

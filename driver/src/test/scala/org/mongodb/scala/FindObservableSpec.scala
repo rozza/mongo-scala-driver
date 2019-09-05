@@ -18,30 +18,30 @@ package org.mongodb.scala
 
 import java.util.concurrent.TimeUnit
 
-import scala.concurrent.duration.Duration
-
 import com.mongodb.CursorType
-import com.mongodb.async.client.{FindIterable, MongoIterable}
-
+import com.mongodb.reactivestreams.client.FindPublisher
 import org.mongodb.scala.model.Collation
+import org.reactivestreams.Publisher
 import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
 
+import scala.concurrent.duration.Duration
+
 class FindObservableSpec extends FlatSpec with Matchers with MockFactory {
 
-  "FindObservable" should "have the same methods as the wrapped FindIterable" in {
-    val mongoIterable: Set[String] = classOf[MongoIterable[Document]].getMethods.map(_.getName).toSet
-    val wrapped = classOf[FindIterable[Document]].getMethods.map(_.getName).toSet -- mongoIterable
+  "FindObservable" should "have the same methods as the wrapped FindPublisher" in {
+    val mongoPublisher: Set[String] = classOf[Publisher[Document]].getMethods.map(_.getName).toSet
+    val wrapped = classOf[FindPublisher[Document]].getMethods.map(_.getName).toSet -- mongoPublisher
     val local = classOf[FindObservable[Document]].getMethods.map(_.getName).toSet
 
     wrapped.foreach((name: String) => {
       val cleanedName = name.stripPrefix("get")
-      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail))
+      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail), s"Missing: $name")
     })
   }
 
   it should "call the underlying methods" in {
-    val wrapper = mock[FindIterable[Document]]
+    val wrapper = mock[FindPublisher[Document]]
     val observable = FindObservable(wrapper)
 
     val filter = Document("a" -> 1)
@@ -53,20 +53,12 @@ class FindObservableSpec extends FlatSpec with Matchers with MockFactory {
     val collation = Collation.builder().locale("en").build()
     val batchSize = 10
 
-    val observer = new Observer[Document]() {
-      override def onError(throwable: Throwable): Unit = {}
-      override def onSubscribe(subscription: Subscription): Unit = {
-        subscription.request(Long.MaxValue)
-      }
-      override def onComplete(): Unit = {}
-      override def onNext(doc: Document): Unit = {}
-    }
+    wrapper.expects(Symbol("first"))().once()
+    observable.first()
 
-    wrapper.expects(Symbol("first"))(*).once()
     wrapper.expects(Symbol("collation"))(collation).once()
     wrapper.expects(Symbol("cursorType"))(CursorType.NonTailable).once()
     wrapper.expects(Symbol("filter"))(filter).once()
-    wrapper.expects(Symbol("getBatchSize"))().once()
     wrapper.expects(Symbol("limit"))(1).once()
     wrapper.expects(Symbol("maxAwaitTime"))(maxDuration.toMillis, TimeUnit.MILLISECONDS).once()
     wrapper.expects(Symbol("maxScan"))(10L).once()
@@ -79,10 +71,7 @@ class FindObservableSpec extends FlatSpec with Matchers with MockFactory {
     wrapper.expects(Symbol("skip"))(1).once()
     wrapper.expects(Symbol("snapshot"))(true).once()
     wrapper.expects(Symbol("sort"))(sort).once()
-    wrapper.expects(Symbol("batchSize"))(Int.MaxValue).once()
-    wrapper.expects(Symbol("batchCursor"))(*).once()
-
-    observable.first().subscribe(observer)
+    wrapper.expects(Symbol("batchSize"))(batchSize).once()
 
     observable.collation(collation)
     observable.cursorType(CursorType.NonTailable)
@@ -99,12 +88,6 @@ class FindObservableSpec extends FlatSpec with Matchers with MockFactory {
     observable.skip(1)
     observable.snapshot(true)
     observable.sort(sort)
-    observable.subscribe(observer)
-
-    wrapper.expects(Symbol("batchSize"))(batchSize).once()
-    wrapper.expects(Symbol("getBatchSize"))().once()
-
     observable.batchSize(batchSize)
-    observable.subscribe(observer)
   }
 }

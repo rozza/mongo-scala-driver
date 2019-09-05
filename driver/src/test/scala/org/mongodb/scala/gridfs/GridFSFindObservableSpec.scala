@@ -18,27 +18,26 @@ package org.mongodb.scala.gridfs
 
 import java.util.concurrent.TimeUnit
 
-import scala.concurrent.duration.Duration
-
-import com.mongodb.async.client.MongoIterable
-import com.mongodb.async.client.gridfs.GridFSFindIterable
-
+import com.mongodb.reactivestreams.client.gridfs.GridFSFindPublisher
 import org.mongodb.scala.Document
+import org.reactivestreams.Publisher
 import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
 
+import scala.concurrent.duration.Duration
+
 class GridFSFindObservableSpec extends FlatSpec with Matchers with MockFactory {
-  val wrapper = mock[GridFSFindIterable]
+  val wrapper = mock[GridFSFindPublisher]
   val gridFSFindObservable = GridFSFindObservable(wrapper)
 
-  "GridFSFindObservable" should "have the same methods as the wrapped GridFSFindIterable" in {
-    val mongoIterable: Set[String] = classOf[MongoIterable[Document]].getMethods.map(_.getName).toSet
-    val wrapped = classOf[GridFSFindIterable].getMethods.map(_.getName).toSet -- mongoIterable - "collation"
+  "GridFSFindObservable" should "have the same methods as the wrapped GridFSFindPublisher" in {
+    val mongoPublisher: Set[String] = classOf[Publisher[Document]].getMethods.map(_.getName).toSet
+    val wrapped = classOf[GridFSFindPublisher].getMethods.map(_.getName).toSet -- mongoPublisher - "collation"
     val local = classOf[GridFSFindObservable].getMethods.map(_.getName).toSet
 
     wrapped.foreach((name: String) => {
       val cleanedName = name.stripPrefix("get")
-      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail))
+      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail), s"Missing: $name")
     })
   }
 
@@ -57,9 +56,6 @@ class GridFSFindObservableSpec extends FlatSpec with Matchers with MockFactory {
     wrapper.expects(Symbol("noCursorTimeout"))(true).once()
     wrapper.expects(Symbol("skip"))(skip).once()
     wrapper.expects(Symbol("sort"))(sort).once()
-    wrapper.expects(Symbol("getBatchSize"))().once()
-    wrapper.expects(Symbol("batchSize"))(2).once()
-    wrapper.expects(Symbol("batchCursor"))(*).once()
 
     gridFSFindObservable.batchSize(batchSize)
     gridFSFindObservable.filter(filter)
@@ -68,7 +64,6 @@ class GridFSFindObservableSpec extends FlatSpec with Matchers with MockFactory {
     gridFSFindObservable.noCursorTimeout(true)
     gridFSFindObservable.skip(skip)
     gridFSFindObservable.sort(sort)
-    gridFSFindObservable.head()
   }
 
 }

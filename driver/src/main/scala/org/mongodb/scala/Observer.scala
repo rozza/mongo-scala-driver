@@ -16,10 +16,10 @@
 
 package org.mongodb.scala
 
-import com.mongodb.async.client.{Observer => JObserver, Subscription => JSubscription}
+import org.reactivestreams.{Subscription => JSubscription, Subscriber}
 
 /**
- * A Scala based wrapper of the `Observer` interface which provides a mechanism for receiving push-based notifications.
+ * A Scala based wrapper of the `Subscriber` interface which provides a mechanism for receiving push-based notifications.
  *
  * Will receive a call to `Observer.onSubscribe(subscription: Subscription)` on subscription to the [[Observable]].
  *
@@ -35,7 +35,7 @@ import com.mongodb.async.client.{Observer => JObserver, Subscription => JSubscri
  *
  * @tparam T The type of element signaled.
  */
-trait Observer[T] extends JObserver[T] {
+trait Observer[T] extends Subscriber[T] {
 
   /**
    * Invoked on subscription to an [[Observable]].

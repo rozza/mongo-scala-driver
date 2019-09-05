@@ -31,17 +31,16 @@ class ApiAliasAndCompanionSpec extends FlatSpec with Matchers {
 
   val classFilter = (f: Class[_ <: Object]) => isPublic(f.getModifiers) && !f.getName.contains("$")
 
-  "The scala package" should "mirror the com.mongodb package and com.mongodb.async.client" in {
+  "The scala package" should "mirror the com.mongodb package and com.mongodb.reactivestreams.client" in {
     val packageName = "com.mongodb"
-    val javaExclusions = Set("AsyncBatchCursor", "Block", "ConnectionString", "Function", "ServerCursor", "Majority", "MongoClients",
-      "MongoIterable", "Observables", "SingleResultCallback", "GridFSBuckets", "DBRefCodec", "DBRefCodecProvider", "DBRef",
-      "DocumentToDBRefTransformer", "ServerSession", "SessionContext", "DBObject", "BSONTimestampCodec", "UnixServerAddress", "Nullable",
-      "BasicDBList", "NonNull", "DBObjectCodec", "DBObjectCodecProvider", "BasicDBObject", "BasicDBObjectBuilder",
-      "NonNullApi", "AsyncAggregateResponseBatchCursor")
-    val scalaExclusions = Set("package", "internal", "result", "Helpers", "Document", "BulkWriteResult", "ScalaObservable",
-      "ScalaWriteConcern", "ObservableImplicits", "Completed", "BoxedObservable", "BoxedObserver", "BoxedSubscription",
-      "classTagToClassOf", "ReadConcernLevel", "bsonDocumentToDocument", "bsonDocumentToUntypedDocument", "documentToUntypedDocument",
-      "BuildInfo", "SingleObservable", "ToSingleObservable", "ScalaSingleObservable", "ScalaClientSession", "ClientSessionImplicits")
+    val javaExclusions = Set("AsyncAggregateResponseBatchCursor", "AsyncBatchCursor", "BasicDBList", "BasicDBObject",
+      "BasicDBObjectBuilder", "Block", "BSONTimestampCodec", "ConnectionString", "DBObject", "DBObjectCodec",
+      "DBObjectCodecProvider", "DBRef", "DBRefCodec", "DBRefCodecProvider", "DocumentToDBRefTransformer", "Function",
+      "MongoClients", "NonNull", "NonNullApi", "Nullable", "ServerCursor", "ServerSession", "SessionContext",
+      "SingleResultCallback", "UnixServerAddress")
+    val scalaExclusions = Set("BuildInfo", "BulkWriteResult", "ClientSessionImplicits", "Completed", "Document",
+      "Helpers", "internal", "Observable", "ObservableImplicits", "Observer", "package", "ReadConcernLevel", "SingleObservable",
+      "Subscription")
 
     val classFilter = (f: Class[_ <: Object]) => {
       isPublic(f.getModifiers) &&
@@ -64,9 +63,13 @@ class ApiAliasAndCompanionSpec extends FlatSpec with Matchers {
         |-com.mongodb.operation.*,
         |-com.mongodb.selector.*,
         |-com.mongodb.client.gridfs.*,
+        |-com.mongodb.async.client.*,
         |-com.mongodb.async.client.gridfs.*,
         |-com.mongodb.async.client.internal.*,
-        |-com.mongodb.async.client.vault.*""".stripMargin
+        |-com.mongodb.async.client.vault.*,
+        |-com.mongodb.reactivestreams.client.gridfs.*,
+        |-com.mongodb.reactivestreams.client.internal.*,
+        |-com.mongodb.reactivestreams.client.vault.*""".stripMargin
     )
 
     val exceptions = new Reflections(packageName).getSubTypesOf(classOf[MongoException]).asScala.map(_.getSimpleName).toSet +
@@ -77,13 +80,16 @@ class ApiAliasAndCompanionSpec extends FlatSpec with Matchers {
       .setScanners(new SubTypesScanner(false))
       .filterInputsBy(filters)).getSubTypesOf(classOf[Object])
       .asScala.filter(classFilter)
-      .map(_.getSimpleName.replace("Iterable", "Observable")).toSet
+      .map(_.getSimpleName.replace("Publisher", "Observable")).toSet
 
     val wrapped = objects ++ exceptions
+
     val scalaPackageName = "org.mongodb.scala"
-    val local = new Reflections(scalaPackageName, new SubTypesScanner(false)).getSubTypesOf(classOf[Object])
+    val scalaObjects = new Reflections(scalaPackageName, new SubTypesScanner(false)).getSubTypesOf(classOf[Object])
       .asScala.filter(classFilter).filter(f => f.getPackage.getName == scalaPackageName)
-      .map(_.getSimpleName).toSet ++ currentMirror.staticPackage(scalaPackageName).info.decls.map(_.name.toString).toSet -- scalaExclusions
+      .map(_.getSimpleName).toSet
+    val packageObjects = currentMirror.staticPackage(scalaPackageName).info.decls.filter(!_.isImplicit).map(_.name.toString).toSet
+    val local = (scalaObjects ++ packageObjects) -- scalaExclusions
 
     diff(local, wrapped) shouldBe empty
   }
@@ -178,7 +184,7 @@ class ApiAliasAndCompanionSpec extends FlatSpec with Matchers {
   }
 
   it should "mirror all com.mongodb.client.vault in org.mongdb.scala.vault" in {
-    val packageName = "com.mongodb.async.client.vault"
+    val packageName = "com.mongodb.reactivestreams.client.vault"
     val wrapped = new Reflections(packageName, new SubTypesScanner(false)).getSubTypesOf(classOf[Object])
       .asScala.filter(_.getPackage.getName == packageName)
       .filter(classFilter)
@@ -207,20 +213,21 @@ class ApiAliasAndCompanionSpec extends FlatSpec with Matchers {
     diff(local, wrapped) shouldBe empty
   }
 
-  it should "mirror com.mongodb.async.client.gridfs in org.mongdb.scala.gridfs" in {
+  it should "mirror com.mongodb.reactivestreams.client.gridfs in org.mongdb.scala.gridfs" in {
     val javaExclusions = Set("GridFSBuckets", "GridFSDownloadByNameOptions")
-    val wrapped: Set[String] = Set("com.mongodb.async.client.gridfs", "com.mongodb.client.gridfs.model").flatMap(packageName =>
+    val wrapped: Set[String] = Set("com.mongodb.reactivestreams.client.gridfs", "com.mongodb.client.gridfs.model").flatMap(packageName =>
       new Reflections(packageName, new SubTypesScanner(false)).getSubTypesOf(classOf[Object])
         .asScala.filter(_.getPackage.getName == packageName)
         .filter(classFilter)
-        .map(_.getSimpleName.replace("Iterable", "Observable")).toSet) -- javaExclusions + "MongoGridFSException"
+        .map(_.getSimpleName.replace("Publisher", "Observable")).toSet) -- javaExclusions + "MongoGridFSException"
 
     val scalaPackageName = "org.mongodb.scala.gridfs"
     val scalaExclusions = Set("package", "ScalaAsyncInputStreamToJava", "ScalaAsyncOutputStreamToJava", "JavaAsyncOutputStreamToScala",
       "JavaAsyncInputStreamToScala")
+    val packageObjects = currentMirror.staticPackage(scalaPackageName).info.decls.filter(!_.isImplicit).map(_.name.toString).toSet
     val local = new Reflections(scalaPackageName, new SubTypesScanner(false)).getSubTypesOf(classOf[Object])
       .asScala.filter(classFilter).filter(f => f.getPackage.getName == scalaPackageName)
-      .map(_.getSimpleName).toSet ++ currentMirror.staticPackage(scalaPackageName).info.decls.map(_.name.toString).toSet -- scalaExclusions
+      .map(_.getSimpleName).toSet ++ packageObjects -- scalaExclusions
 
     diff(local, wrapped) shouldBe empty
   }

@@ -18,9 +18,8 @@ package org.mongodb.scala
 
 import java.util.concurrent.TimeUnit
 
-import com.mongodb.async.client.ChangeStreamIterable
+import com.mongodb.reactivestreams.client.ChangeStreamPublisher
 import org.mongodb.scala.bson.BsonTimestamp
-import org.mongodb.scala.internal.ObservableHelper._
 import org.mongodb.scala.model.Collation
 import org.mongodb.scala.model.changestream.{ChangeStreamDocument, FullDocument}
 
@@ -38,7 +37,7 @@ import scala.concurrent.duration.Duration
  * @since 2.2
  * @note Requires MongoDB 3.6 or greater
  */
-case class ChangeStreamObservable[TResult](private val wrapped: ChangeStreamIterable[TResult]) extends Observable[ChangeStreamDocument[TResult]] {
+case class ChangeStreamObservable[TResult](private val wrapped: ChangeStreamPublisher[TResult]) extends Observable[ChangeStreamDocument[TResult]] {
 
   /**
    * Sets the fullDocument value.
@@ -140,7 +139,15 @@ case class ChangeStreamObservable[TResult](private val wrapped: ChangeStreamIter
    * @tparam T the result type
    * @return an Observable
    */
-  def withDocumentClass[T](clazz: Class[T]): Observable[T] = observe(wrapped.withDocumentClass(clazz))
+  def withDocumentClass[T](clazz: Class[T]): Observable[T] = wrapped.withDocumentClass(clazz).toObservable()
 
-  override def subscribe(observer: Observer[_ >: ChangeStreamDocument[TResult]]): Unit = observe(wrapped).subscribe(observer)
+  /**
+   * Helper to return a single observable limited to the first result.
+   *
+   * @return a single observable which will the first result.
+   * @since 4.0
+   */
+  def first(): SingleObservable[ChangeStreamDocument[TResult]] = wrapped.first()
+
+  override def subscribe(observer: Observer[_ >: ChangeStreamDocument[TResult]]): Unit = wrapped.subscribe(observer)
 }

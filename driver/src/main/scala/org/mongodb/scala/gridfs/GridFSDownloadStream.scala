@@ -18,11 +18,8 @@ package org.mongodb.scala.gridfs
 
 import java.nio.ByteBuffer
 
-import com.mongodb.async.SingleResultCallback
-import com.mongodb.async.client.gridfs.{GridFSDownloadStream => JGridFSDownloadStream}
-
-import org.mongodb.scala.internal.ObservableHelper.{observe, observeCompleted, observeInt, observeLong}
-import org.mongodb.scala.{Completed, Observable}
+import com.mongodb.reactivestreams.client.gridfs.{GridFSDownloadStream => JGridFSDownloadStream}
+import org.mongodb.scala.{Completed, Observable, ObservableImplicits, SingleObservable}
 
 /**
  * A GridFS InputStream for downloading data from GridFS
@@ -37,7 +34,7 @@ case class GridFSDownloadStream(private val wrapped: JGridFSDownloadStream) exte
    *
    * @return a Observable with a single element containing the corresponding GridFSFile for the file being downloaded
    */
-  def gridFSFile(): Observable[GridFSFile] = observe(wrapped.getGridFSFile(_: SingleResultCallback[GridFSFile]))
+  def gridFSFile(): SingleObservable[GridFSFile] = wrapped.getGridFSFile()
 
   /**
    * Sets the number of chunks to return per batch.
@@ -61,7 +58,7 @@ case class GridFSDownloadStream(private val wrapped: JGridFSDownloadStream) exte
    * @return an Observable with a single element indicating total number of bytes read into the buffer, or
    *         `-1` if there is no more data because the end of the stream has been reached.
    */
-  override def read(dst: ByteBuffer): Observable[Int] = observeInt(wrapped.read(dst, _: SingleResultCallback[java.lang.Integer]))
+  override def read(dst: ByteBuffer): SingleObservable[Int] = wrapped.read(dst)
 
   /**
    * Skips over and discards n bytes of data from this input stream.
@@ -70,12 +67,12 @@ case class GridFSDownloadStream(private val wrapped: JGridFSDownloadStream) exte
    * @return an Observable with a single element indicating the total number of bytes skipped
    * @since 2.6
    */
-  override def skip(bytesToSkip: Long): Observable[Long] = observeLong(wrapped.skip(bytesToSkip, _: SingleResultCallback[java.lang.Long]))
+  override def skip(bytesToSkip: Long): SingleObservable[Long] = wrapped.skip(bytesToSkip)
 
   /**
    * Closes the input stream
    *
    * @return a Observable with a single element indicating when the operation has completed
    */
-  override def close(): Observable[Completed] = observeCompleted(wrapped.close(_: SingleResultCallback[Void]))
+  override def close(): SingleObservable[Completed] = wrapped.close()
 }

@@ -17,26 +17,25 @@
 package org.mongodb.scala.internal
 
 import com.mongodb.MongoException
-
 import org.mongodb.scala.{Observable, Observer, Subscription}
 
 object TestObservable {
 
   def apply[A](from: Iterable[A]): TestObservable[A] = {
-    new TestObservable(IterableObservable[A](from))
+    new TestObservable(Observable[A](from))
   }
 
   def apply[A](from: Iterable[A], failOn: Int): TestObservable[A] = {
-    new TestObservable(IterableObservable[A](from), failOn)
+    new TestObservable(Observable[A](from), failOn)
   }
 
   def apply[A](from: Iterable[A], failOn: Int, errorMessage: String): TestObservable[A] = {
-    new TestObservable(IterableObservable[A](from), failOn, errorMessage)
+    new TestObservable(Observable[A](from), failOn, errorMessage)
   }
 }
 
 case class TestObservable[A](
-    delegate:     Observable[A] = IterableObservable[Int]((1 to 100).toStream),
+    delegate:     Observable[A] = Observable[Int]((1 to 100).toStream),
     failOn:       Int           = Int.MaxValue,
     errorMessage: String        = "Failed"
 ) extends Observable[A] {

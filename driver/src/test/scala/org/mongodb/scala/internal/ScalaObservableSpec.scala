@@ -18,18 +18,17 @@ package org.mongodb.scala.internal
 
 import java.util.concurrent._
 
+import com.mongodb.MongoException
+import org.mongodb.scala._
+import org.reactivestreams.{Subscriber, Subscription}
+import org.scalatest.prop.TableDrivenPropertyChecks._
+import org.scalatest.{FlatSpec, Matchers}
+
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext}
 import scala.util.{Failure, Success}
-
-import com.mongodb.MongoException
-import com.mongodb.async.client.{Observer => JObserver, Subscription => JSubscription}
-
-import org.mongodb.scala._
-import org.scalatest.prop.TableDrivenPropertyChecks._
-import org.scalatest.{FlatSpec, Matchers}
 
 class ScalaObservableSpec extends FlatSpec with Matchers {
 
@@ -452,19 +451,19 @@ class ScalaObservableSpec extends FlatSpec with Matchers {
       () => badObservable(1, 2, 3).filter((i: Int) => i > 1)
     )
 
-  it should "work with Java Observer" in {
+  it should "work with Java Subscriber" in {
     var results = ArrayBuffer[Int]()
     var errorSeen: Option[Throwable] = None
     var latch = new CountDownLatch(1)
 
-    var subscription: Option[JSubscription] = None
-    val observer = new JObserver[Int]() {
+    var subscription: Option[Subscription] = None
+    val observer = new Subscriber[Int]() {
       override def onError(e: Throwable): Unit = {
         errorSeen = Some(e)
         latch.countDown()
       }
 
-      override def onSubscribe(sub: JSubscription): Unit = {
+      override def onSubscribe(sub: Subscription): Unit = {
         subscription = Some(sub)
         sub.request(Long.MaxValue)
       }
@@ -516,19 +515,17 @@ class ScalaObservableSpec extends FlatSpec with Matchers {
 
   def observable[A](from: Iterable[A] = (1 to 100), fail: Boolean = false): Observable[A] = {
     fail match {
-      case true  => TestObservable[A](Observable(from), failOn = 51)
-      case false => TestObservable[A](Observable(from))
+      case true  => TestObservable[A](from, failOn = 51)
+      case false => TestObservable[A](from)
     }
   }
 
-  "Observers" should "support JSubscriptions" in {
+  "Observers" should "support Reactive stream Subscriptions" in {
     val observer = new Observer[Int]() {
       override def onError(e: Throwable): Unit = {}
 
       override def onSubscribe(subscription: Subscription): Unit = {
         subscription.request(1)
-        subscription.unsubscribe()
-        subscription.isUnsubscribed should equal(true)
       }
 
       override def onComplete(): Unit = {}
@@ -537,19 +534,20 @@ class ScalaObservableSpec extends FlatSpec with Matchers {
     }
 
     var requested = 0
-    val subscription = new JSubscription {
-      var subscribed = true
-
-      override def isUnsubscribed: Boolean = !subscribed
+    val subscription = new Subscription {
+      var cancelled = false
+      def isCancelled: Boolean = cancelled
 
       override def request(n: Long): Unit = requested += 1
 
-      override def unsubscribe(): Unit = subscribed = false
+      override def cancel(): Unit = cancelled = true
     }
 
     observer.onSubscribe(subscription)
-    subscription.isUnsubscribed should equal(true)
+    subscription.isCancelled should equal(false)
     requested should equal(1)
+    subscription.cancel()
+    subscription.isCancelled should equal(true)
   }
 
   "Observers" should "automatically subscribe and request Long.MaxValue" in {
@@ -562,13 +560,10 @@ class ScalaObservableSpec extends FlatSpec with Matchers {
     }
 
     var requested: Long = 0
-    val subscription = new JSubscription {
-
-      override def isUnsubscribed: Boolean = false
-
+    val subscription: Subscription = new Subscription {
       override def request(n: Long): Unit = requested = n
 
-      override def unsubscribe(): Unit = {}
+      override def cancel(): Unit = {}
     }
 
     observer.onSubscribe(subscription)

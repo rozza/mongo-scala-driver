@@ -16,7 +16,7 @@
 
 package org.mongodb.scala
 
-import com.mongodb.async.client.{MongoClients => JMongoClients}
+import com.mongodb.reactivestreams.client.{MongoClients => JMongoClients}
 import com.mongodb.{MongoClientSettings => JMongoClientSettings}
 
 /**

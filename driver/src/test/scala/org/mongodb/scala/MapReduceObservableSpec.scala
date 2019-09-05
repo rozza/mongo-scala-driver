@@ -15,39 +15,31 @@
  */
 
 package org.mongodb.scala
+
 import java.util.concurrent.TimeUnit
 
-import scala.concurrent.duration.Duration
-
-import com.mongodb.async.client.{MapReduceIterable, MongoIterable}
 import com.mongodb.client.model.MapReduceAction
-
+import com.mongodb.reactivestreams.client.MapReducePublisher
 import org.mongodb.scala.model.Collation
 import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
 
+import scala.concurrent.duration.Duration
+
 class MapReduceObservableSpec extends FlatSpec with Matchers with MockFactory {
 
-  def observer[T] = new Observer[T]() {
-    override def onError(throwable: Throwable): Unit = {}
-    override def onSubscribe(subscription: Subscription): Unit = subscription.request(Long.MaxValue)
-    override def onComplete(): Unit = {}
-    override def onNext(doc: T): Unit = {}
-  }
-
   "MapReduceObservable" should "have the same methods as the wrapped MapReduceObservable" in {
-    val mongoIterable: Set[String] = classOf[MongoIterable[Document]].getMethods.map(_.getName).toSet
-    val wrapped = classOf[MapReduceIterable[Document]].getMethods.map(_.getName).toSet -- mongoIterable
+    val wrapped = classOf[MapReducePublisher[Document]].getMethods.map(_.getName).toSet
     val local = classOf[MapReduceObservable[Document]].getMethods.map(_.getName).toSet
 
     wrapped.foreach((name: String) => {
       val cleanedName = name.stripPrefix("get")
-      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail))
+      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail), s"Missing: $name")
     })
   }
 
   it should "call the underlying methods" in {
-    val wrapper = mock[MapReduceIterable[Document]]
+    val wrapper = mock[MapReducePublisher[Document]]
     val observable = MapReduceObservable(wrapper)
 
     val filter = Document("a" -> 1)
@@ -72,10 +64,7 @@ class MapReduceObservableSpec extends FlatSpec with Matchers with MockFactory {
     wrapper.expects(Symbol("nonAtomic"))(true).once()
     wrapper.expects(Symbol("bypassDocumentValidation"))(true).once()
     wrapper.expects(Symbol("collation"))(collation).once()
-    wrapper.expects(Symbol("toCollection"))(*).once()
-    wrapper.expects(Symbol("getBatchSize"))().once()
-    wrapper.expects(Symbol("batchSize"))(Int.MaxValue).once()
-    wrapper.expects(Symbol("batchCursor"))(*).once()
+    wrapper.expects(Symbol("batchSize"))(batchSize).once()
 
     observable.filter(filter)
     observable.scope(scope)
@@ -92,13 +81,9 @@ class MapReduceObservableSpec extends FlatSpec with Matchers with MockFactory {
     observable.nonAtomic(true)
     observable.bypassDocumentValidation(true)
     observable.collation(collation)
-    observable.toCollection().subscribe(observer[Completed])
-    observable.subscribe(observer[Document])
-
-    wrapper.expects(Symbol("batchSize"))(batchSize).once()
-    wrapper.expects(Symbol("getBatchSize"))().once()
-
     observable.batchSize(batchSize)
-    observable.subscribe(observer[Document])
+
+    wrapper.expects(Symbol("toCollection"))().once()
+    observable.toCollection()
   }
 }

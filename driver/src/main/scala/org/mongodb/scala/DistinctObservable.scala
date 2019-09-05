@@ -18,13 +18,11 @@ package org.mongodb.scala
 
 import java.util.concurrent.TimeUnit
 
-import scala.concurrent.duration.Duration
-
-import com.mongodb.async.client.DistinctIterable
-
+import com.mongodb.reactivestreams.client.DistinctPublisher
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.internal.ObservableHelper._
 import org.mongodb.scala.model.Collation
+
+import scala.concurrent.duration.Duration
 
 /**
  * Observable for distinct
@@ -33,7 +31,7 @@ import org.mongodb.scala.model.Collation
  * @tparam TResult The type of the result.
  * @since 1.0
  */
-case class DistinctObservable[TResult](private val wrapped: DistinctIterable[TResult]) extends Observable[TResult] {
+case class DistinctObservable[TResult](private val wrapped: DistinctPublisher[TResult]) extends Observable[TResult] {
   /**
    * Sets the query filter to apply to the query.
    *
@@ -84,5 +82,13 @@ case class DistinctObservable[TResult](private val wrapped: DistinctIterable[TRe
     this
   }
 
-  override def subscribe(observer: Observer[_ >: TResult]): Unit = observe(wrapped).subscribe(observer)
+  /**
+   * Helper to return a single observable limited to the first result.
+   *
+   * @return a single observable which will the first result.
+   * @since 4.0
+   */
+  def first(): SingleObservable[TResult] = wrapped.first()
+
+  override def subscribe(observer: Observer[_ >: TResult]): Unit = wrapped.subscribe(observer)
 }

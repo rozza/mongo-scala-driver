@@ -18,36 +18,27 @@ package org.mongodb.scala
 
 import java.util.concurrent.TimeUnit
 
-import scala.concurrent.duration.Duration
-
-import com.mongodb.async.client.{AggregateIterable, MongoIterable}
-
+import com.mongodb.reactivestreams.client.AggregatePublisher
 import org.mongodb.scala.model.Collation
 import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
 
+import scala.concurrent.duration.Duration
+
 class AggregateObservableSpec extends FlatSpec with Matchers with MockFactory {
 
-  def observer[T]: Observer[T] = new Observer[T]() {
-    override def onError(throwable: Throwable): Unit = {}
-    override def onSubscribe(subscription: Subscription): Unit = subscription.request(Long.MaxValue)
-    override def onComplete(): Unit = {}
-    override def onNext(doc: T): Unit = {}
-  }
-
   "AggregateObservable" should "have the same methods as the wrapped AggregateObservable" in {
-    val mongoIterable: Set[String] = classOf[MongoIterable[Document]].getMethods.map(_.getName).toSet
-    val wrapped: Set[String] = classOf[AggregateIterable[Document]].getMethods.map(_.getName).toSet -- mongoIterable
-    val local = classOf[AggregateObservable[Document]].getMethods.map(_.getName).toSet
+    val wrapped: Set[String] = classOf[AggregatePublisher[Document]].getMethods.map(_.getName).toSet
+    val local: Set[String] = classOf[AggregateObservable[Document]].getMethods.map(_.getName).toSet
 
     wrapped.foreach((name: String) => {
       val cleanedName = name.stripPrefix("get")
-      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail))
+      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail), s"Missing: $name")
     })
   }
 
   it should "call the underlying methods" in {
-    val wrapper = mock[AggregateIterable[Document]]
+    val wrapper = mock[AggregatePublisher[Document]]
     val observable = AggregateObservable(wrapper)
 
     val duration = Duration(1, TimeUnit.SECONDS)
@@ -60,13 +51,10 @@ class AggregateObservableSpec extends FlatSpec with Matchers with MockFactory {
     wrapper.expects(Symbol("maxTime"))(duration.toMillis, TimeUnit.MILLISECONDS).once()
     wrapper.expects(Symbol("maxAwaitTime"))(duration.toMillis, TimeUnit.MILLISECONDS).once()
     wrapper.expects(Symbol("bypassDocumentValidation"))(true).once()
-    wrapper.expects(Symbol("toCollection"))(*).once()
     wrapper.expects(Symbol("collation"))(collation).once()
     wrapper.expects(Symbol("comment"))("comment").once()
-    wrapper.expects(Symbol("getBatchSize"))().once()
-    wrapper.expects(Symbol("batchSize"))(Int.MaxValue).once()
-    wrapper.expects(Symbol("batchCursor"))(*).once()
     wrapper.expects(Symbol("hint"))(hint).once()
+    wrapper.expects(Symbol("batchSize"))(batchSize).once()
 
     observable.allowDiskUse(true)
     observable.useCursor(true)
@@ -76,13 +64,9 @@ class AggregateObservableSpec extends FlatSpec with Matchers with MockFactory {
     observable.collation(collation)
     observable.comment("comment")
     observable.hint(hint)
-    observable.toCollection().subscribe(observer[Completed])
-    observable.subscribe(observer[Document])
-
-    wrapper.expects(Symbol("batchSize"))(batchSize).once()
-    wrapper.expects(Symbol("getBatchSize"))().once()
-
     observable.batchSize(batchSize)
-    observable.subscribe(observer[Document])
+
+    wrapper.expects(Symbol("toCollection"))().once()
+    observable.toCollection()
   }
 }

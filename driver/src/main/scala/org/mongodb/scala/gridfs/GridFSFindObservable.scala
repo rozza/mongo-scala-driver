@@ -18,20 +18,18 @@ package org.mongodb.scala.gridfs
 
 import java.util.concurrent.TimeUnit
 
-import scala.concurrent.duration.Duration
-
-import com.mongodb.async.client.gridfs.GridFSFindIterable
-
+import com.mongodb.reactivestreams.client.gridfs.GridFSFindPublisher
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.internal.ObservableHelper.observe
-import org.mongodb.scala.{Observable, Observer}
+import org.mongodb.scala.{Observable, Observer, SingleObservable}
+
+import scala.concurrent.duration.Duration
 
 /**
  * Observable representing the GridFS Files Collection.
  *
  * @since 1.2
  */
-case class GridFSFindObservable(private val wrapped: GridFSFindIterable) extends Observable[GridFSFile] {
+case class GridFSFindObservable(private val wrapped: GridFSFindPublisher) extends Observable[GridFSFile] {
 
   /**
    * Sets the query filter to apply to the query.
@@ -125,6 +123,14 @@ case class GridFSFindObservable(private val wrapped: GridFSFindIterable) extends
   }
 
   /**
+   * Helper to return a single observable limited to the first result.
+   *
+   * @return a single observable which will the first result.
+   * @since 4.0
+   */
+  def first(): SingleObservable[GridFSFile] = wrapped.first()
+
+  /**
    * Request `Observable` to start streaming data.
    *
    * This is a "factory method" and can be called multiple times, each time starting a new [[org.mongodb.scala.Subscription]].
@@ -134,5 +140,5 @@ case class GridFSFindObservable(private val wrapped: GridFSFindIterable) extends
    *
    * @param observer the `Observer` that will consume signals from this `Observable`
    */
-  override def subscribe(observer: Observer[_ >: GridFSFile]): Unit = observe(wrapped).subscribe(observer)
+  override def subscribe(observer: Observer[_ >: GridFSFile]): Unit = wrapped.subscribe(observer)
 }

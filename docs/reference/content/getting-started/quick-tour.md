@@ -129,7 +129,7 @@ In the API all methods returning a `Observables` are "cold" streams meaning that
 The example below does nothing:
 
 ```scala
-val observable: Observable[Completed] = collection.insertOne(doc)
+val observable: SingleObservable[Completed] = collection.insertOne(doc)
 ```
 
 Only when an `Observable` is subscribed to and data requested will the operation happen:

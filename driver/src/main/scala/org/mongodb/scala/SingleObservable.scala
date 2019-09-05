@@ -16,9 +16,8 @@
 
 package org.mongodb.scala
 
-import com.mongodb.async.client.{Observable => JObservable, Observer => JObserver}
-
 import org.mongodb.scala.internal.SingleItemObservable
+import org.reactivestreams.Subscriber
 
 /**
  * A companion object for [[SingleObservable]]
@@ -46,7 +45,7 @@ object SingleObservable {
  * @tparam T the type of element signaled.
  * @since 2.0
  */
-trait SingleObservable[T] extends Observable[T] with JObservable[T] {
+trait SingleObservable[T] extends Observable[T] {
 
   /**
    * Request `SingleObservable` to start streaming data.
@@ -66,6 +65,6 @@ trait SingleObservable[T] extends Observable[T] with JObservable[T] {
    * @note Users should not have to implement this method but rather use the Scala `Observable`.
    * @param observer the `Observer` that will consume signals from this `Observable`
    */
-  override def subscribe(observer: JObserver[_ >: T]): Unit = subscribe(BoxedObserver[T](observer))
+  override def subscribe(observer: Subscriber[_ >: T]): Unit = this.subscribe(BoxedSubscriber(observer))
 }
 

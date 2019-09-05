@@ -18,10 +18,9 @@ package org.mongodb.scala.model.vault
 
 import java.lang.reflect.Modifier.{isPublic, isStatic}
 
-import com.mongodb.async.client.vault.{ClientEncryption => JClientEncryption}
-import org.mongodb.scala.bson.{BsonBinary, BsonString, BsonValue}
+import com.mongodb.reactivestreams.client.vault.{ClientEncryption => JClientEncryption}
+import org.mongodb.scala.bson.{BsonBinary, BsonString}
 import org.mongodb.scala.vault.ClientEncryption
-import org.mongodb.scala.{Observer, Subscription}
 import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -29,12 +28,6 @@ class ClientEncryptionSpec extends FlatSpec with Matchers with MockFactory {
 
   val wrapped = mock[JClientEncryption]
   val clientEncryption = ClientEncryption(wrapped)
-  def observer[T]: Observer[T] = new Observer[T]() {
-    override def onError(throwable: Throwable): Unit = {}
-    override def onSubscribe(subscription: Subscription): Unit = subscription.request(Long.MaxValue)
-    override def onComplete(): Unit = {}
-    override def onNext(doc: T): Unit = {}
-  }
 
   "ClientEncryption" should "have the same methods as the wrapped Filters" in {
     val wrapped = classOf[JClientEncryption].getDeclaredMethods
@@ -48,23 +41,27 @@ class ClientEncryptionSpec extends FlatSpec with Matchers with MockFactory {
   it should "call createDataKey" in {
     val kmsProvider = "kmsProvider"
     val options = DataKeyOptions()
-    wrapped.expects(Symbol("createDataKey"))(kmsProvider, options, *).once()
-    clientEncryption.createDataKey(kmsProvider, options).subscribe(observer[BsonBinary])
+
+    wrapped.expects(Symbol("createDataKey"))(kmsProvider, *).once()
+    clientEncryption.createDataKey(kmsProvider)
+
+    wrapped.expects(Symbol("createDataKey"))(kmsProvider, options).once()
+    clientEncryption.createDataKey(kmsProvider, options)
   }
 
   it should "call encrypt" in {
     val bsonValue = BsonString("")
     val options = EncryptOptions("algorithm")
-    wrapped.expects(Symbol("encrypt"))(bsonValue, options, *).once()
+    wrapped.expects(Symbol("encrypt"))(bsonValue, options).once()
 
-    clientEncryption.encrypt(bsonValue, options).subscribe(observer[BsonBinary])
+    clientEncryption.encrypt(bsonValue, options)
   }
 
   it should "call decrypt" in {
     val bsonBinary = BsonBinary(Array[Byte](1, 2, 3))
-    wrapped.expects(Symbol("decrypt"))(bsonBinary, *).once()
+    wrapped.expects(Symbol("decrypt"))(bsonBinary).once()
 
-    clientEncryption.decrypt(bsonBinary).subscribe(observer[BsonValue])
+    clientEncryption.decrypt(bsonBinary)
   }
 
 }

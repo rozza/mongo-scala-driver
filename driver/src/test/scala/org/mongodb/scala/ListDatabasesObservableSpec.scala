@@ -17,55 +17,41 @@
 package org.mongodb.scala
 import java.util.concurrent.TimeUnit
 
-import scala.concurrent.duration.Duration
-
-import com.mongodb.async.client.{ListDatabasesIterable, MongoIterable}
-
+import com.mongodb.reactivestreams.client.ListDatabasesPublisher
+import org.reactivestreams.Publisher
 import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
+
+import scala.concurrent.duration.Duration
 
 class ListDatabasesObservableSpec extends FlatSpec with Matchers with MockFactory {
 
   "ListDatabasesObservable" should "have the same methods as the wrapped ListDatabasesObservable" in {
-    val mongoIterable: Set[String] = classOf[MongoIterable[Document]].getMethods.map(_.getName).toSet
-    val wrapped = classOf[ListDatabasesIterable[Document]].getMethods.map(_.getName).toSet -- mongoIterable
+    val mongoPublisher: Set[String] = classOf[Publisher[Document]].getMethods.map(_.getName).toSet
+    val wrapped = classOf[ListDatabasesPublisher[Document]].getMethods.map(_.getName).toSet -- mongoPublisher
     val local = classOf[ListDatabasesObservable[Document]].getMethods.map(_.getName).toSet
 
     wrapped.foreach((name: String) => {
       val cleanedName = name.stripPrefix("get")
-      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail))
+      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail), s"Missing: $name")
     })
   }
 
   it should "call the underlying methods" in {
-    val wrapper = mock[ListDatabasesIterable[Document]]
+    val wrapper = mock[ListDatabasesPublisher[Document]]
     val observable = ListDatabasesObservable(wrapper)
     val filter = Document("{a: 1}")
     val duration = Duration(1, TimeUnit.SECONDS)
     val batchSize = 10
-    val observer = new Observer[Document]() {
-      override def onError(throwable: Throwable): Unit = {}
-      override def onSubscribe(subscription: Subscription): Unit = subscription.request(Long.MaxValue)
-      override def onComplete(): Unit = {}
-      override def onNext(doc: Document): Unit = {}
-    }
 
     wrapper.expects(Symbol("maxTime"))(duration.toMillis, TimeUnit.MILLISECONDS).once()
     wrapper.expects(Symbol("filter"))(filter).once()
     wrapper.expects(Symbol("nameOnly"))(true).once()
-    wrapper.expects(Symbol("getBatchSize"))().once()
-    wrapper.expects(Symbol("batchSize"))(Int.MaxValue).once()
-    wrapper.expects(Symbol("batchCursor"))(*).once()
+    wrapper.expects(Symbol("batchSize"))(batchSize).once()
 
     observable.maxTime(duration)
     observable.filter(filter)
     observable.nameOnly(true)
-    observable.subscribe(observer)
-
-    wrapper.expects(Symbol("batchSize"))(batchSize).once()
-    wrapper.expects(Symbol("getBatchSize"))().once()
-
     observable.batchSize(batchSize)
-    observable.subscribe(observer)
   }
 }

@@ -18,11 +18,11 @@ package reactivestreams
 
 import java.util.concurrent.{ CountDownLatch, TimeUnit }
 
+import org.mongodb.scala.Completed
+
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration.Duration
 import scala.util.{ Failure, Success, Try }
-
-import org.mongodb.scala.Completed
 import org.reactivestreams.{ Subscriber, Subscription }
 
 object TestSubscriber {
@@ -90,7 +90,7 @@ case class TestSubscriber[T](delegate: Subscriber[T]) extends Subscriber[T] {
    */
   def onComplete(): Unit = {
     try {
-      onCompleteEvents += Completed()
+      onCompleteEvents += null
       delegate.onComplete()
     } finally {
       latch.countDown()

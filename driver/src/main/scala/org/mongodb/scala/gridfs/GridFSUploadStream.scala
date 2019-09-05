@@ -18,13 +18,10 @@ package org.mongodb.scala.gridfs
 
 import java.nio.ByteBuffer
 
+import com.mongodb.reactivestreams.client.gridfs.{GridFSUploadStream => JGridFSUploadStream}
 import org.bson.types.ObjectId
-import com.mongodb.async.SingleResultCallback
-import com.mongodb.async.client.gridfs.{GridFSUploadStream => JGridFSUploadStream}
-
 import org.mongodb.scala.bson.BsonValue
-import org.mongodb.scala.internal.ObservableHelper.{observeCompleted, observeInt}
-import org.mongodb.scala.{Completed, Observable}
+import org.mongodb.scala.{Completed, SingleObservable}
 
 /**
  * A GridFS OutputStream for uploading data into GridFS
@@ -56,7 +53,7 @@ case class GridFSUploadStream(private val wrapped: JGridFSUploadStream) extends 
    *
    * @return an Observable identifying when the abort and cleanup has finished
    */
-  def abort(): Observable[Completed] = observeCompleted(wrapped.abort(_: SingleResultCallback[Void]))
+  def abort(): SingleObservable[Completed] = wrapped.abort()
 
   /**
    * Writes a sequence of bytes from the given buffer into this stream.
@@ -64,13 +61,13 @@ case class GridFSUploadStream(private val wrapped: JGridFSUploadStream) extends 
    * @param src the source buffer containing the data to be written.
    * @return a Observable returning a single element containing the number of bytes written.
    */
-  override def write(src: ByteBuffer): Observable[Int] = observeInt(wrapped.write(src, _: SingleResultCallback[java.lang.Integer]))
+  override def write(src: ByteBuffer): SingleObservable[Int] = wrapped.write(src)
 
   /**
    * Closes the output stream
    *
    * @return an Observable identifying when the AsyncOutptStream has been closed
    */
-  override def close(): Observable[Completed] = observeCompleted(wrapped.close(_: SingleResultCallback[Void]))
+  override def close(): SingleObservable[Completed] = wrapped.close()
 }
 

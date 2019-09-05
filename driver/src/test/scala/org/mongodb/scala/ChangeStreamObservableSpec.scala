@@ -18,30 +18,32 @@ package org.mongodb.scala
 
 import java.util.concurrent.TimeUnit
 
-import com.mongodb.async.client.{ChangeStreamIterable, MongoIterable}
+import com.mongodb.reactivestreams.client.ChangeStreamPublisher
 import org.mongodb.scala.bson.BsonTimestamp
 import org.mongodb.scala.model.Collation
 import org.mongodb.scala.model.changestream.FullDocument
+import org.reactivestreams.Publisher
 import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.duration.Duration
+import scala.util.{Failure, Success}
 
 class ChangeStreamObservableSpec extends FlatSpec with Matchers with MockFactory {
 
   "ChangeStreamObservable" should "have the same methods as the wrapped ChangeStreamObservable" in {
-    val mongoIterable: Set[String] = classOf[MongoIterable[Document]].getMethods.map(_.getName).toSet
-    val wrapped: Set[String] = classOf[ChangeStreamIterable[Document]].getMethods.map(_.getName).toSet -- mongoIterable
+    val mongoPublisher: Set[String] = classOf[Publisher[Document]].getMethods.map(_.getName).toSet
+    val wrapped: Set[String] = classOf[ChangeStreamPublisher[Document]].getMethods.map(_.getName).toSet -- mongoPublisher
     val local = classOf[ChangeStreamObservable[Document]].getMethods.map(_.getName).toSet
 
     wrapped.foreach((name: String) => {
       val cleanedName = name.stripPrefix("get")
-      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail))
+      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail), s"Missing: $name")
     })
   }
 
   it should "call the underlying methods" in {
-    val wrapper = mock[ChangeStreamIterable[Document]]
+    val wrapper = mock[ChangeStreamPublisher[Document]]
     val observable = ChangeStreamObservable[Document](wrapper)
 
     val duration = Duration(1, TimeUnit.SECONDS)
@@ -68,5 +70,10 @@ class ChangeStreamObservableSpec extends FlatSpec with Matchers with MockFactory
     observable.maxAwaitTime(duration)
     observable.collation(collation)
     observable.withDocumentClass(classOf[Int])
+  }
+
+  it should "mirror FullDocument" in {
+    FullDocument.fromString("default") shouldBe Success(FullDocument.DEFAULT)
+    FullDocument.fromString("madeUp").isFailure shouldBe true
   }
 }

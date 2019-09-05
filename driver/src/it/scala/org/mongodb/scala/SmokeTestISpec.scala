@@ -30,9 +30,7 @@ class SmokeTestISpec extends RequiresMongoDBISpec with FuturesSpec {
       client.listDatabaseNames().futureValue
 
       info("Creating a collection")
-      val created = database.createCollection(collectionName).futureValue
-      created should equal(Completed())
-      created.toString() should equal("The operation completed successfully")
+      database.createCollection(collectionName).futureValue
 
       info("Database names should include the new collection")
       val updatedNames = client.listDatabaseNames().futureValue
@@ -53,7 +51,7 @@ class SmokeTestISpec extends RequiresMongoDBISpec with FuturesSpec {
       collection.find().futureValue shouldBe empty
 
       info("Insert a document")
-      collection.insertOne(document).futureValue should equal(Completed())
+      collection.insertOne(document).futureValue
 
       info("The count should be one")
       collection.countDocuments().futureValue shouldBe 1
@@ -85,21 +83,21 @@ class SmokeTestISpec extends RequiresMongoDBISpec with FuturesSpec {
       indexNames should contain("test_1")
 
       info("drop the index")
-      collection.dropIndex("test_1").futureValue should equal(Completed())
+      collection.dropIndex("test_1").futureValue
 
       info("has a single index left '_id'")
       collection.listIndexes.futureValue.length shouldBe 1
 
       info("can rename the collection")
       val newCollectionName = "new" + collectionName.capitalize
-      collection.renameCollection(MongoNamespace(databaseName, newCollectionName)).futureValue should equal(Completed())
+      collection.renameCollection(MongoNamespace(databaseName, newCollectionName)).futureValue
 
       info("the new collection name is in the collection names list")
       database.listCollectionNames().futureValue should contain(newCollectionName)
 
       info("drop the new collection")
       val newCollection = database.getCollection(newCollectionName)
-      newCollection.drop().futureValue should equal(Completed())
+      newCollection.drop().futureValue
 
       info("there are no indexes")
       newCollection.listIndexes().futureValue.length shouldBe 0

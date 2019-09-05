@@ -18,7 +18,7 @@ package org.mongodb.scala.gridfs
 
 import java.nio.ByteBuffer
 
-import com.mongodb.async.client.gridfs.{GridFSUploadStream => JGridFSUploadStream}
+import com.mongodb.reactivestreams.client.gridfs.{GridFSUploadStream => JGridFSUploadStream}
 
 import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
@@ -33,7 +33,7 @@ class GridFSUploadStreamSpec extends FlatSpec with Matchers with MockFactory {
 
     wrapped.foreach((name: String) => {
       val cleanedName = name.stripPrefix("get")
-      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail))
+      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail), s"Missing: $name")
     })
   }
 
@@ -42,15 +42,15 @@ class GridFSUploadStreamSpec extends FlatSpec with Matchers with MockFactory {
 
     wrapper.expects(Symbol("getObjectId"))().once()
     wrapper.expects(Symbol("getId"))().once()
-    wrapper.expects(Symbol("abort"))(*).once()
-    wrapper.expects(Symbol("write"))(src, *).once()
-    wrapper.expects(Symbol("close"))(*).once()
+    wrapper.expects(Symbol("abort"))().once()
+    wrapper.expects(Symbol("write"))(src).once()
+    wrapper.expects(Symbol("close"))().once()
 
     gridFSUploadStream.objectId
     gridFSUploadStream.id
-    gridFSUploadStream.abort().head()
-    gridFSUploadStream.write(src).head()
-    gridFSUploadStream.close().head()
+    gridFSUploadStream.abort()
+    gridFSUploadStream.write(src)
+    gridFSUploadStream.close()
   }
 
 }

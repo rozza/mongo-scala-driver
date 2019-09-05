@@ -19,11 +19,9 @@ package org.mongodb.scala.vault
 import java.io.Closeable
 
 import com.mongodb.annotations.Beta
-import com.mongodb.async.SingleResultCallback
-import com.mongodb.async.client.vault.{ClientEncryption => JClientEncryption}
+import com.mongodb.reactivestreams.client.vault.{ClientEncryption => JClientEncryption}
 import org.bson.{BsonBinary, BsonValue}
-import org.mongodb.scala.{Observable, SingleObservable}
-import org.mongodb.scala.internal.ObservableHelper.observe
+import org.mongodb.scala.SingleObservable
 import org.mongodb.scala.model.vault.{DataKeyOptions, EncryptOptions}
 
 /**
@@ -57,9 +55,8 @@ case class ClientEncryption(private val wrapped: JClientEncryption) extends Clos
    * @param dataKeyOptions the options for data key creation
    * @return a Publisher containing the identifier for the created data key
    */
-  def createDataKey(kmsProvider: String, dataKeyOptions: DataKeyOptions): SingleObservable[BsonBinary] = {
-    observe(wrapped.createDataKey(kmsProvider, dataKeyOptions, _: SingleResultCallback[BsonBinary]))
-  }
+  def createDataKey(kmsProvider: String, dataKeyOptions: DataKeyOptions): SingleObservable[BsonBinary] =
+    wrapped.createDataKey(kmsProvider, dataKeyOptions)
 
   /**
    * Encrypt the given value with the given options.
@@ -69,9 +66,8 @@ case class ClientEncryption(private val wrapped: JClientEncryption) extends Clos
    * @param options the options for data encryption
    * @return a Publisher containing the encrypted value, a BSON binary of subtype 6
    */
-  def encrypt(value: BsonValue, options: EncryptOptions): SingleObservable[BsonBinary] = {
-    observe(wrapped.encrypt(value, options, _: SingleResultCallback[BsonBinary]))
-  }
+  def encrypt(value: BsonValue, options: EncryptOptions): SingleObservable[BsonBinary] =
+    wrapped.encrypt(value, options)
 
   /**
    * Decrypt the given value.
@@ -79,9 +75,7 @@ case class ClientEncryption(private val wrapped: JClientEncryption) extends Clos
    * @param value the value to decrypt, which must be of subtype 6
    * @return a Publisher containing the decrypted value
    */
-  def decrypt(value: BsonBinary): SingleObservable[BsonValue] = {
-    observe(wrapped.decrypt(value, _: SingleResultCallback[BsonValue]))
-  }
+  def decrypt(value: BsonBinary): SingleObservable[BsonValue] = wrapped.decrypt(value)
 
   override def close(): Unit = wrapped.close()
 

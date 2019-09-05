@@ -18,10 +18,10 @@ package org.mongodb.scala
 
 import java.util.concurrent.TimeUnit
 
-import scala.concurrent.duration.Duration
-import com.mongodb.async.client.ListDatabasesIterable
+import com.mongodb.reactivestreams.client.ListDatabasesPublisher
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.internal.ObservableHelper._
+
+import scala.concurrent.duration.Duration
 
 /**
  * Observable interface for ListDatabases.
@@ -30,7 +30,7 @@ import org.mongodb.scala.internal.ObservableHelper._
  * @tparam TResult The type of the result.
  * @since 1.0
  */
-case class ListDatabasesObservable[TResult](wrapped: ListDatabasesIterable[TResult]) extends Observable[TResult] {
+case class ListDatabasesObservable[TResult](wrapped: ListDatabasesPublisher[TResult]) extends Observable[TResult] {
 
   /**
    * Sets the maximum execution time on the server for this operation.
@@ -83,5 +83,13 @@ case class ListDatabasesObservable[TResult](wrapped: ListDatabasesIterable[TResu
     this
   }
 
-  override def subscribe(observer: Observer[_ >: TResult]): Unit = observe(wrapped).subscribe(observer)
+  /**
+   * Helper to return a single observable limited to the first result.
+   *
+   * @return a single observable which will the first result.
+   * @since 4.0
+   */
+  def first(): SingleObservable[TResult] = wrapped.first()
+
+  override def subscribe(observer: Observer[_ >: TResult]): Unit = wrapped.subscribe(observer)
 }

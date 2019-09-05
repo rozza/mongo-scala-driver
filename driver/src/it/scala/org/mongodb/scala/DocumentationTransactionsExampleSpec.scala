@@ -23,7 +23,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 
-//scalastyle:off magic.number
+//scalastyle:off magic.number regex
 class DocumentationTransactionsExampleSpec extends RequiresMongoDBISpec {
 
   // Implicit functions that execute the Observable and return the results
@@ -43,8 +43,8 @@ class DocumentationTransactionsExampleSpec extends RequiresMongoDBISpec {
     client.getDatabase("hr").createCollection("employees").execute()
     client.getDatabase("hr").createCollection("events").execute()
 
-    updateEmployeeInfoWithRetry(client).execute() should equal(Completed())
-    client.getDatabase("hr").drop().execute() should equal(Completed())
+    updateEmployeeInfoWithRetry(client).execute()
+    client.getDatabase("hr").drop().execute()
   }
 
   def updateEmployeeInfo(database: MongoDatabase, observable: SingleObservable[ClientSession]): SingleObservable[ClientSession] = {
@@ -61,7 +61,7 @@ class DocumentationTransactionsExampleSpec extends RequiresMongoDBISpec {
       employeesCollection.updateOne(clientSession, Filters.eq("employee", 3), Updates.set("status", "Inactive"))
         .subscribe((res: UpdateResult) => println(res))
       eventsCollection.insertOne(clientSession, Document("employee" -> 3, "status" -> Document("new" -> "Inactive", "old" -> "Active")))
-        .subscribe((res: Completed) => println(res))
+        .subscribe((res: Completed) => ())
 
       clientSession
     })
@@ -92,7 +92,7 @@ class DocumentationTransactionsExampleSpec extends RequiresMongoDBISpec {
   def updateEmployeeInfoWithRetry(client: MongoClient): SingleObservable[Completed] = {
 
     val database = client.getDatabase("hr")
-    val updateEmployeeInfoObservable: Observable[ClientSession] = updateEmployeeInfo(database, client.startSession())
+    val updateEmployeeInfoObservable: SingleObservable[ClientSession] = updateEmployeeInfo(database, client.startSession())
     val commitTransactionObservable: SingleObservable[Completed] =
       updateEmployeeInfoObservable.flatMap(clientSession => clientSession.commitTransaction())
     val commitAndRetryObservable: SingleObservable[Completed] = commitAndRetry(commitTransactionObservable)

@@ -16,79 +16,32 @@
 
 package org.mongodb.scala
 
-import com.mongodb.Block
-
-import scala.collection.JavaConverters._
+import com.mongodb.reactivestreams.client.{MongoClient => JMongoClient}
 import org.bson.BsonDocument
-import com.mongodb.async.client.{MongoClient => JMongoClient}
-import com.mongodb.connection.ClusterSettings
 import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
+
+import scala.collection.JavaConverters._
 
 class MongoClientSpec extends FlatSpec with Matchers with MockFactory {
 
   val wrapped = mock[JMongoClient]
   val clientSession = mock[ClientSession]
   val mongoClient = new MongoClient(wrapped)
-  def observer[T] = new Observer[T]() {
-    override def onError(throwable: Throwable): Unit = {}
-    override def onSubscribe(subscription: Subscription): Unit = subscription.request(Long.MaxValue)
-    override def onComplete(): Unit = {}
-    override def onNext(doc: T): Unit = {}
-  }
 
   "MongoClient" should "have the same methods as the wrapped MongoClient" in {
-    val wrapped = classOf[JMongoClient].getMethods.map(_.getName)
+    val wrapped = classOf[JMongoClient].getMethods.map(_.getName).toSet -- Seq("getSettings")
     val local = classOf[MongoClient].getMethods.map(_.getName)
 
     wrapped.foreach((name: String) => {
       val cleanedName = name.stripPrefix("get")
-      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail))
+      assert(local.contains(name) | local.contains(cleanedName.head.toLower + cleanedName.tail), s"Missing: $name")
     })
-  }
-
-  it should "default to localhost:27107" in {
-    val serverAddress = new ServerAddress("localhost", 27017)
-    val mongoClient = MongoClient()
-
-    mongoClient.settings.getClusterSettings.getHosts.asScala.head shouldBe serverAddress
-  }
-
-  it should "apply read preference from connection string to settings" in {
-    MongoClient("mongodb://localhost/").settings.getReadPreference should equal(ReadPreference.primary())
-    MongoClient("mongodb://localhost/?readPreference=secondaryPreferred").settings.getReadPreference should equal(ReadPreference.secondaryPreferred())
-  }
-
-  it should "apply read concern from connection string to settings" in {
-    MongoClient("mongodb://localhost/").settings.getReadConcern should equal(ReadConcern.DEFAULT)
-    MongoClient("mongodb://localhost/?readConcernLevel=local").settings.getReadConcern should equal(ReadConcern.LOCAL)
-  }
-
-  it should "apply write concern from connection string to settings" in {
-    MongoClient("mongodb://localhost/").settings.getWriteConcern should equal(WriteConcern.ACKNOWLEDGED)
-    MongoClient("mongodb://localhost/?w=majority").settings.getWriteConcern should equal(WriteConcern.MAJORITY)
-  }
-
-  it should "accept MongoClientSettings" in {
-    val serverAddress = new ServerAddress("localhost", 27020)
-    val clusterSettings = ClusterSettings.builder().hosts(List(serverAddress).asJava).build()
-    val mongoClient = MongoClient(MongoClientSettings.builder()
-      .applyToClusterSettings(new Block[ClusterSettings.Builder] {
-        override def apply(b: ClusterSettings.Builder): Unit = b.applySettings(clusterSettings)
-      }).build())
-
-    mongoClient.settings.getClusterSettings.getHosts.get(0) shouldBe serverAddress
   }
 
   it should "accept MongoDriverInformation" in {
     val driverInformation = MongoDriverInformation.builder().driverName("test").driverVersion("1.2.0").build()
     MongoClient("mongodb://localhost", Some(driverInformation))
-  }
-
-  it should "call the underlying getSettings" in {
-    wrapped.expects(Symbol("getSettings"))().once()
-
-    mongoClient.settings
   }
 
   it should "call the underlying getDatabase" in {
@@ -105,9 +58,9 @@ class MongoClientSpec extends FlatSpec with Matchers with MockFactory {
 
   it should "call the underlying startSession" in {
     val clientSessionOptions = ClientSessionOptions.builder.build()
-    wrapped.expects(Symbol("startSession"))(clientSessionOptions, *).once()
+    wrapped.expects(Symbol("startSession"))(clientSessionOptions).once()
 
-    mongoClient.startSession(clientSessionOptions).subscribe(observer[ClientSession])
+    mongoClient.startSession(clientSessionOptions)
   }
 
   it should "call the underlying listDatabases[T]" in {

@@ -20,7 +20,6 @@ import scala.collection.immutable.IndexedSeq
 import scala.concurrent.duration.Duration
 
 import org.mongodb.scala.{ Document, _ }
-import reactivestreams.Implicits._
 
 object ReactiveStreamsExample {
   /**
@@ -47,7 +46,7 @@ object ReactiveStreamsExample {
     dropSubscriber.requestMore(1)
     dropSubscriber.awaitTerminalEvent(Duration(10, "s"))
     dropSubscriber.assertNoErrors()
-    dropSubscriber.assertReceivedOnNext(Seq(Completed()))
+    dropSubscriber.assertReceivedOnNext(Seq())
 
     // Insert some documents
     println("Inserting documents")
@@ -57,7 +56,7 @@ object ReactiveStreamsExample {
     insertSubscriber.requestMore(1)
     insertSubscriber.awaitTerminalEvent(Duration(10, "s"))
     insertSubscriber.assertNoErrors()
-    insertSubscriber.assertReceivedOnNext(Seq(Completed()))
+    insertSubscriber.assertReceivedOnNext(Seq())
 
     println("Finding documents")
     val findSubscriber = TestSubscriber[Document]()

@@ -35,7 +35,7 @@ val collection: MongoCollection[Document] = database.getCollection("mycoll")
 
 // insert a document
 val document: Document = Document("_id" -> 1, "x" -> 1)
-val insertObservable: Observable[Completed] = collection.insertOne(document)
+val insertObservable: SingleObservable[Completed] = collection.insertOne(document)
 
 insertObservable.subscribe(new Observer[Completed] {
   override def onNext(result: Completed): Unit = println(s"onNext: $result")

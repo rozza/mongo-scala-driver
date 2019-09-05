@@ -19,12 +19,10 @@ package org.mongodb.scala
 import java.io.Closeable
 
 import com.mongodb.ConnectionString
-import com.mongodb.async.SingleResultCallback
-import com.mongodb.async.client.{MongoClients, MongoClient => JMongoClient, MongoClientSettings => LegacyMongoClientSettings}
+import com.mongodb.reactivestreams.client.{MongoClients, MongoClient => JMongoClient}
 import org.bson.codecs.configuration.CodecRegistry
 import org.mongodb.scala.bson.DefaultHelper.DefaultsTo
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.internal.ObservableHelper.observe
 
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
@@ -64,33 +62,6 @@ object MongoClient {
       .applyConnectionString(new ConnectionString(uri))
       .codecRegistry(DEFAULT_CODEC_REGISTRY)
       .build(), mongoDriverInformation)
-  }
-
-  /**
-   * Create a MongoClient instance from the MongoClientSettings
-   *
-   * @param legacyClientSettings MongoClientSettings to use for the MongoClient
-   * @return MongoClient
-   */
-  @deprecated("Update to the supported MongoClientSettings", "2.3")
-  def apply(legacyClientSettings: LegacyMongoClientSettings): MongoClient = MongoClient(legacyClientSettings, None)
-
-  /**
-   * Create a MongoClient instance from the MongoClientSettings
-   *
-   * @param legacyClientSettings MongoClientSettings to use for the MongoClient
-   * @param mongoDriverInformation any driver information to associate with the MongoClient
-   * @return MongoClient
-   * @note the `mongoDriverInformation` is intended for driver and library authors to associate extra driver metadata with the connections.
-   */
-  @deprecated("Update to the supported MongoClientSettings", "2.3")
-  def apply(legacyClientSettings: LegacyMongoClientSettings, mongoDriverInformation: Option[MongoDriverInformation]): MongoClient = {
-    val builder = mongoDriverInformation match {
-      case Some(info) => MongoDriverInformation.builder(info)
-      case None       => MongoDriverInformation.builder()
-    }
-    builder.driverName(BuildInfo.name).driverVersion(BuildInfo.version).driverPlatform(s"Scala/${BuildInfo.scalaVersion}")
-    MongoClient(MongoClients.create(legacyClientSettings, builder.build()))
   }
 
   /**
@@ -143,8 +114,7 @@ case class MongoClient(private val wrapped: JMongoClient) extends Closeable {
    * @since 2.4
    * @note Requires MongoDB 3.6 or greater
    */
-  def startSession(): SingleObservable[ClientSession] =
-    observe(wrapped.startSession(_: SingleResultCallback[ClientSession]))
+  def startSession(): SingleObservable[ClientSession] = wrapped.startSession()
 
   /**
    * Creates a client session.
@@ -155,8 +125,7 @@ case class MongoClient(private val wrapped: JMongoClient) extends Closeable {
    * @since 2.2
    * @note Requires MongoDB 3.6 or greater
    */
-  def startSession(options: ClientSessionOptions): SingleObservable[ClientSession] =
-    observe(wrapped.startSession(options, _: SingleResultCallback[ClientSession]))
+  def startSession(options: ClientSessionOptions): SingleObservable[ClientSession] = wrapped.startSession(options)
 
   /**
    * Gets the database with the given name.
@@ -173,22 +142,12 @@ case class MongoClient(private val wrapped: JMongoClient) extends Closeable {
   def close(): Unit = wrapped.close()
 
   /**
-   * Gets the settings that this client uses to connect to server.
-   *
-   * **Note**: `MongoClientSettings` is immutable.
-   *
-   * @return the settings
-   */
-  @deprecated("There is no replacement for this method", "2.3")
-  lazy val settings: LegacyMongoClientSettings = wrapped.getSettings
-
-  /**
    * Get a list of the database names
    *
    * [[http://docs.mongodb.org/manual/reference/commands/listDatabases List Databases]]
    * @return an iterable containing all the names of all the databases
    */
-  def listDatabaseNames(): Observable[String] = observe(wrapped.listDatabaseNames())
+  def listDatabaseNames(): Observable[String] = wrapped.listDatabaseNames()
 
   /**
    * Get a list of the database names
@@ -200,7 +159,7 @@ case class MongoClient(private val wrapped: JMongoClient) extends Closeable {
    * @since 2.2
    * @note Requires MongoDB 3.6 or greater
    */
-  def listDatabaseNames(clientSession: ClientSession): Observable[String] = observe(wrapped.listDatabaseNames(clientSession))
+  def listDatabaseNames(clientSession: ClientSession): Observable[String] = wrapped.listDatabaseNames(clientSession)
 
   /**
    * Gets the list of databases

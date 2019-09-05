@@ -18,11 +18,11 @@ package org.mongodb.scala
 
 import java.nio.ByteBuffer
 
-import com.mongodb.async.SingleResultCallback
-import com.mongodb.async.client.gridfs.{AsyncInputStream => JAsyncInputStream, AsyncOutputStream => JAsyncOutputStream}
-import org.mongodb.scala.internal.ObservableHelper.{observeCompleted, observeInt, observeLong}
+import com.mongodb.reactivestreams.client.Success
+import com.mongodb.reactivestreams.client.gridfs.{AsyncInputStream => JAsyncInputStream, AsyncOutputStream => JAsyncOutputStream}
+import org.reactivestreams.Publisher
 
-package object gridfs {
+package object gridfs extends ObservableImplicits {
 
   /**
    * An exception indicating that a failure occurred in GridFS.
@@ -49,69 +49,31 @@ package object gridfs {
 
   implicit class JavaAsyncInputStreamToScala(wrapped: JAsyncInputStream) extends AsyncInputStream {
 
-    override def close(): Observable[Completed] = observeCompleted(wrapped.close(_: SingleResultCallback[Void]))
+    override def close(): SingleObservable[Completed] = wrapped.close()
 
-    override def read(dst: ByteBuffer): Observable[Int] = observeInt(wrapped.read(dst, _: SingleResultCallback[java.lang.Integer]))
+    override def read(dst: ByteBuffer): SingleObservable[Int] = wrapped.read(dst)
 
-    override def skip(bytesToSkip: Long): Observable[Long] = observeLong(wrapped.skip(bytesToSkip, _: SingleResultCallback[java.lang.Long]))
+    override def skip(bytesToSkip: Long): SingleObservable[Long] = wrapped.skip(bytesToSkip)
   }
 
   implicit class JavaAsyncOutputStreamToScala(wrapped: JAsyncOutputStream) extends AsyncOutputStream {
 
-    override def close(): Observable[Completed] = observeCompleted(wrapped.close(_: SingleResultCallback[Void]))
+    override def close(): SingleObservable[Completed] = wrapped.close()
 
-    override def write(src: ByteBuffer): Observable[Int] = observeInt(wrapped.write(src, _: SingleResultCallback[java.lang.Integer]))
+    override def write(src: ByteBuffer): SingleObservable[Int] = wrapped.write(src)
   }
 
   implicit class ScalaAsyncInputStreamToJava(wrapped: AsyncInputStream) extends JAsyncInputStream {
-    // scalastyle:off null
-    override def close(callback: SingleResultCallback[Void]): Unit = wrapped.close().subscribe(
-      (_: Completed) => (),
-      (e: Throwable) => callback.onResult(null, e),
-      () => callback.onResult(null, null)
-    )
+    override def read(dst: ByteBuffer): Publisher[java.lang.Integer] = wrapped.read(dst).map(i => new java.lang.Integer(i))
 
-    override def read(dst: ByteBuffer, callback: SingleResultCallback[Integer]): Unit = wrapped.read(dst).subscribe(
-      new Observer[Int] {
-        var bytesRead: Option[Int] = None
-        override def onError(e: Throwable): Unit = callback.onResult(null, e)
+    override def skip(bytesToSkip: Long): Publisher[java.lang.Long] = wrapped.skip(bytesToSkip).map(l => new java.lang.Long(l))
 
-        override def onComplete(): Unit = bytesRead.foreach(callback.onResult(_, null))
-
-        override def onNext(result: Int): Unit = bytesRead = Some(result)
-      }
-    )
-    override def skip(bytesToSkip: Long, callback: SingleResultCallback[java.lang.Long]): Unit = wrapped.skip(bytesToSkip).subscribe(
-      new Observer[Long] {
-        var bytesSkipped: Option[Long] = None
-        override def onError(e: Throwable): Unit = callback.onResult(null, e)
-        override def onComplete(): Unit = callback.onResult(bytesSkipped.getOrElse(0L).asInstanceOf[java.lang.Long], null)
-        override def onNext(result: Long): Unit = bytesSkipped = Some(result)
-      }
-    )
-    // scalastyle:on null
+    override def close(): Publisher[Success] = wrapped.close().map(_ => Success.SUCCESS)
   }
 
   implicit class ScalaAsyncOutputStreamToJava(wrapped: AsyncOutputStream) extends JAsyncOutputStream {
-    // scalastyle:off null
-    override def write(src: ByteBuffer, callback: SingleResultCallback[Integer]): Unit = wrapped.write(src).subscribe(
-      new Observer[Int] {
-        var bytesWritten: Option[Int] = None
+    override def write(src: ByteBuffer): Publisher[java.lang.Integer] = wrapped.write(src).map(i => new java.lang.Integer(i))
 
-        override def onError(e: Throwable): Unit = callback.onResult(null, e)
-
-        override def onComplete(): Unit = bytesWritten.foreach(callback.onResult(_, null))
-
-        override def onNext(result: Int): Unit = bytesWritten = Some(result)
-      }
-    )
-
-    override def close(callback: SingleResultCallback[Void]): Unit = wrapped.close().subscribe(
-      (_: Completed) => (),
-      (e: Throwable) => callback.onResult(null, e),
-      () => callback.onResult(null, null)
-    )
-
-    // scalastyle:off null
+    override def close(): Publisher[Success] = wrapped.close().map(_ => Success.SUCCESS)
   }
 }

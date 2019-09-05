@@ -16,9 +16,9 @@
 
 package org.mongodb.scala.bson
 
-import org.bson.codecs.configuration.CodecRegistries.{ fromRegistries, fromProviders }
+import com.mongodb.reactivestreams.client.MongoClients
+import org.bson.codecs.configuration.CodecRegistries.{ fromProviders, fromRegistries }
 import org.bson.codecs.configuration.CodecRegistry
-import com.mongodb.async.client.MongoClients
 
 package object codecs {
   val DEFAULT_CODEC_REGISTRY: CodecRegistry = fromRegistries(

@@ -19,7 +19,7 @@ package org.mongodb.scala.gridfs.helpers
 import java.io.{InputStream, OutputStream}
 import java.nio.ByteBuffer
 
-import com.mongodb.async.client.gridfs.helpers.{AsyncStreamHelper => JAsyncStreamHelper}
+import com.mongodb.reactivestreams.client.gridfs.helpers.{AsyncStreamHelper => JAsyncStreamHelper}
 
 import org.mongodb.scala.gridfs.{AsyncInputStream, AsyncOutputStream}
 

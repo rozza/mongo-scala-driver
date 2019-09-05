@@ -18,9 +18,9 @@ package org.mongodb.scala.internal
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import org.mongodb.scala.{Observable, Observer, Subscription}
+import org.mongodb.scala.{Observable, Observer, SingleObservable, Subscription}
 
-private[scala] case class FoldLeftObservable[T, S](observable: Observable[T], initialValue: S, accumulator: (S, T) => S) extends Observable[S] {
+private[scala] case class FoldLeftObservable[T, S](observable: Observable[T], initialValue: S, accumulator: (S, T) => S) extends SingleObservable[S] {
 
   override def subscribe(observer: Observer[_ >: S]): Unit = {
     observable.subscribe(SubscriptionCheckingObserver(

@@ -18,12 +18,11 @@ package org.mongodb.scala
 
 import java.util.concurrent.TimeUnit
 
-import scala.concurrent.duration.Duration
-import com.mongodb.async.SingleResultCallback
-import com.mongodb.async.client.AggregateIterable
+import com.mongodb.reactivestreams.client.AggregatePublisher
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.internal.ObservableHelper._
 import org.mongodb.scala.model.Collation
+
+import scala.concurrent.duration.Duration
 
 /**
  * Observable for aggregate
@@ -32,7 +31,7 @@ import org.mongodb.scala.model.Collation
  * @tparam TResult The type of the result.
  * @since 1.0
  */
-case class AggregateObservable[TResult](private val wrapped: AggregateIterable[TResult]) extends Observable[TResult] {
+case class AggregateObservable[TResult](private val wrapped: AggregatePublisher[TResult]) extends Observable[TResult] {
 
   /**
    * Enables writing to temporary files. A null value indicates that it's unspecified.
@@ -164,7 +163,15 @@ case class AggregateObservable[TResult](private val wrapped: AggregateIterable[T
    * [[http://docs.mongodb.org/manual/aggregation/ Aggregation]]
    * @return a Observable with a single element indicating when the operation has completed
    */
-  def toCollection(): Observable[Completed] = observeCompleted(wrapped.toCollection(_: SingleResultCallback[Void]))
+  def toCollection(): SingleObservable[Completed] = wrapped.toCollection()
 
-  override def subscribe(observer: Observer[_ >: TResult]): Unit = observe(wrapped).subscribe(observer)
+  /**
+   * Helper to return a single observable limited to the first result.
+   *
+   * @return a single observable which will the first result.
+   * @since 4.0
+   */
+  def first(): SingleObservable[TResult] = wrapped.first()
+
+  override def subscribe(observer: Observer[_ >: TResult]): Unit = wrapped.subscribe(observer)
 }

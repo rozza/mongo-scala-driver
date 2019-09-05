@@ -16,9 +16,6 @@
 
 package org.mongodb.scala
 
-import com.mongodb.async.SingleResultCallback
-import org.mongodb.scala.internal.ObservableHelper.observeCompleted
-
 /**
  * Extends the Java [[ClientSession]] and adds helpers for committing and aborting transactions.
  *
@@ -28,6 +25,7 @@ trait ClientSessionImplicits {
 
   /**
    * The implicit ClientSession with Scala helpers
+   *
    * @param clientSession the clientSession
    */
   implicit class ScalaClientSession(clientSession: ClientSession) {
@@ -37,13 +35,14 @@ trait ClientSessionImplicits {
      *
      * A transaction can only be commmited if one has first been started.
      */
-    def commitTransaction(): SingleObservable[Completed] = observeCompleted(clientSession.commitTransaction(_: SingleResultCallback[Void]))
+    def commitTransaction(): SingleObservable[Completed] = clientSession.commitTransaction()
 
     /**
      * Abort a transaction in the context of this session.
      *
      * A transaction can only be aborted if one has first been started.
      */
-    def abortTransaction(): SingleObservable[Completed] = observeCompleted(clientSession.abortTransaction(_: SingleResultCallback[Void]))
+    def abortTransaction(): SingleObservable[Completed] = clientSession.abortTransaction()
   }
+
 }

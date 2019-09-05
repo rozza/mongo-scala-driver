@@ -18,15 +18,12 @@ package org.mongodb.scala
 
 import java.util.concurrent.TimeUnit
 
-import scala.concurrent.duration.Duration
-
-import com.mongodb.async.SingleResultCallback
-import com.mongodb.async.client.MapReduceIterable
 import com.mongodb.client.model.MapReduceAction
-
+import com.mongodb.reactivestreams.client.MapReducePublisher
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.internal.ObservableHelper._
 import org.mongodb.scala.model.Collation
+
+import scala.concurrent.duration.Duration
 
 /**
  * Observable for map reduce.
@@ -36,7 +33,7 @@ import org.mongodb.scala.model.Collation
  * @tparam TResult The type of the result.
  * @since 1.0
  */
-case class MapReduceObservable[TResult](wrapped: MapReduceIterable[TResult]) extends Observable[TResult] {
+case class MapReduceObservable[TResult](wrapped: MapReducePublisher[TResult]) extends Observable[TResult] {
   /**
    * Sets the collectionName for the output of the MapReduce
    *
@@ -246,7 +243,15 @@ case class MapReduceObservable[TResult](wrapped: MapReduceIterable[TResult]) ext
    * @return a Observable with a single element indicating when the operation has completed
    * [[http://docs.mongodb.org/manual/aggregation/ Aggregation]]
    */
-  def toCollection(): Observable[Completed] = observeCompleted(wrapped.toCollection(_: SingleResultCallback[Void]))
+  def toCollection(): SingleObservable[Completed] = wrapped.toCollection()
 
-  override def subscribe(observer: Observer[_ >: TResult]): Unit = observe(wrapped).subscribe(observer)
+  /**
+   * Helper to return a single observable limited to the first result.
+   *
+   * @return a single observable which will the first result.
+   * @since 4.0
+   */
+  def first(): SingleObservable[TResult] = wrapped.first()
+
+  override def subscribe(observer: Observer[_ >: TResult]): Unit = wrapped.subscribe(observer)
 }
